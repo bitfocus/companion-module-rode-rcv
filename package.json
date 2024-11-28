@@ -1,0 +1,32 @@
+{
+  "name": "companion-module-rode-rcv",
+  "version": "1.0.2",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "nodemon",
+    "package": "yarn companion-module-build",
+    "debug": "tsc && sh -c 'tail -f \"$HOME/Library/Application Support/companion/logs\"/*.log'"
+  },
+  "types": "typings/index.d.ts",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@companion-module/base": "^1.11.0",
+    "@tsconfig/node18": "^18.2.4",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^22.7.3",
+    "fast-xml-parser": "^4.5.0",
+    "osc": "^2.4.5",
+    "osc-js": "^2.4.1",
+    "typescript": "^5.6.2"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "^2.1.0",
+    "nodemon": "^3.1.7",
+    "ts-node": "^10.9.2"
+  }
+}
