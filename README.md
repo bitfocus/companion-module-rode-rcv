@@ -3,15 +3,19 @@ This module can be used to communicate with a RØDECaster Video switcher.
   
 <br/>
 
-## Installing from pkg file
+## Installing from pkg file manually
 
 ### Installing
 - Create a new directory on your PC/Mac called `companion-plugins`
-- Download the latest release tgz from [Releases](https://github.com/bitfocus/companion-module-rode-rcv).
+- Download the latest release tgz from [Releases](https://github.com/bitfocus/companion-module-rode-rcv/releases).
 - Place the tgz inside the companion-plugins directory and extract. It should create a new directory called `companion-module-rode-rcv`.
 - Launch Companion, on the launch window, click the settings cog in the top-right to reveal `Developer modules path`.
 - Point this path to the `companion-plugins` directory. This will cause Companion to reload.
 - The module should now be loaded into Companion.
+
+[![image](https://github.com/user-attachments/assets/43b6a1a8-ebde-4d27-b9ec-2dff43a74b21)](https://github.com/bitfocus/companion/wiki/How-to-use-a-module-that-is-not-included-in-Companion-build#windows--macos--linux-gui)
+
+For more information, please refer to the [Companion documentation](https://github.com/bitfocus/companion/wiki/How-to-use-a-module-that-is-not-included-in-Companion-build#windows--macos--linux-gui).
 
 <br/>
   
