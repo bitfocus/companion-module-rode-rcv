@@ -2,37 +2,12 @@ name: Validate & Build Plugin
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
-  check_changes:
-    runs-on: ubuntu-latest
-    outputs:
-      run_build: ${{ steps.set_output.outputs.run_build }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Check if only README.md has changed
-        id: check
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            other_files:
-              - '**'
-              exclude:
-                - 'README.md'
-
-      - name: Set output
-        id: set_output
-        run: echo "run_build=${{ steps.check.outputs.other_files }}" >> $GITHUB_OUTPUT
-
   build:
-    needs: [check_changes]
-    if: needs.check_changes.outputs.run_build == 'true'
     runs-on: ubuntu-latest
 
     strategy:
@@ -40,96 +15,101 @@ jobs:
         node-version: [18.x]
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch all history and tags
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history and tags
 
-      - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
-        run: yarn install
+    - name: Install dependencies
+      run: yarn install
 
-      - name: Build the project
-        run: tsc
+    - name: Build the project
+      run: tsc
 
-      - name: Install Companion Tools
-        run: yarn add @companion-module/tools@latest
+    - name: Install Companion Tools
+      run: yarn add @companion-module/tools@latest
 
-      - name: Extract version from manifest
-        id: get_version
-        run: |
-          version=$(jq -r '.version' ./package.json)
-          echo "version=$version" >> $GITHUB_OUTPUT
+    - name: Extract version from manifest
+      id: get_version
+      run: |
+        version=$(jq -r '.version' ./package.json)
+        echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Pack Companion plugin
-        run: |
+    - name: Pack Companion plugin
+      run: |
           version=${{ steps.get_version.outputs.version }}
           yarn companion-module-build
-          
+      
           # Create a temporary directory to hold the files
           mkdir temp_pkg
           mv ./pkg/* temp_pkg/
-          
+      
           # Remove the pkg directory
           rm -rf pkg/
 
           cd temp_pkg
-          
+      
           # Create the new zip file with the desired structure
           zip -r ../companion-module-rode-rcv_${version}.zip ./*
-          
+      
           # Clean up the temporary directory
           cd .. && rm -rf temp_pkg
+      
 
-      - name: Delete existing release if it exists
-        run: |
-          release_id=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ steps.get_version.outputs.version }} \
-            | jq -r '.id')
-          if [ "$release_id" != "null" ]; then
-            echo "Release found: Deleting release"
-            curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              https://api.github.com/repos/${{ github.repository }}/releases/$release_id
-            echo "Deleting tag"
-            git tag -d v${{ steps.get_version.outputs.version }}
-            git push --delete origin v${{ steps.get_version.outputs.version }}
-          fi
+    # Check if the release exists, and if so, delete it.
+    - name: Delete existing release if it exists
+      run: |
+        release_id=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ steps.get_version.outputs.version }} \
+          | jq -r '.id')
+        if [ "$release_id" != "null" ]; then
+          echo "Release found: Deleting release"
+          curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/${{ github.repository }}/releases/$release_id
+          echo "Deleting tag"
+          git tag -d v${{ steps.get_version.outputs.version }}
+          git push --delete origin v${{ steps.get_version.outputs.version }}
+        fi
 
-      - name: Get previous version tag
-        id: get_previous_version
-        run: |
-          previous_version=$(git describe --tags --abbrev=0 HEAD^)
-          echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
+    - name: Get previous version tag
+      id: get_previous_version
+      run: |
+        previous_version=$(git describe --tags --abbrev=0 HEAD^)
+        echo "previous_version=$previous_version" >> $GITHUB_OUTPUT
 
-      - name: Get commit messages since previous version
-        id: get_commits
-        run: |
-          previous_version=${{ steps.get_previous_version.outputs.previous_version }}
-          commits=$(git log $previous_version..HEAD --pretty=format:"- %s")
-          echo "$commits" > commits.txt
+    - name: Get commit messages since previous version
+      id: get_commits
+      run: |
+        previous_version=${{ steps.get_previous_version.outputs.previous_version }}
+        commits=$(git log $previous_version..HEAD --pretty=format:"- %s")
+        echo "$commits" > commits.txt
 
-      - name: Create GitHub release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "v${{ steps.get_version.outputs.version }}"
-          release_name: "RCV Companion ${{ steps.get_version.outputs.version }}"
-          body_path: ./commits.txt  # Read the commit messages from the file
-          draft: false
-          prerelease: false
+    # Create a new release with the extracted version and commit messages in the description
+    - name: Create GitHub release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: "v${{ steps.get_version.outputs.version }}"
+        release_name: "RCV Companion ${{ steps.get_version.outputs.version }}"
+        body_path: ./commits.txt  # Read the commit messages from the file
+        draft: false
+        prerelease: false
 
-      - name: Upload module file to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./companion-module-rode-rcv_${{ steps.get_version.outputs.version }}.zip
-          asset_name: companion-module-rode-rcv_${{ steps.get_version.outputs.version }}.zip
-          asset_content_type: application/octet-stream
+    # Upload the packed plugin to the release
+    - name: Upload module file to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./companion-module-rode-rcv_${{ steps.get_version.outputs.version }}.zip
+        asset_name: companion-module-rode-rcv_${{ steps.get_version.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+  

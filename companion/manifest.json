@@ -1,6 +1,6 @@
 {
-	"id": "companion-module-rode-rcv",
-	"name": "RØDECaster Video",
+	"id": "rode-rcv",
+	"name": "rode-rcv",
 	"shortname": "RCV",
 	"description": "This plugin enables Companion to control RØDECaster Video (RCV) devices.",
 	"version": "0.0.0",
@@ -10,11 +10,11 @@
 	"maintainers": [
 		{
 			"name": "RØDE",
-			"link": "https://help.rode.com/hc/en-us/requests/new"
+			"github": "https://github.com/freedmanelectronics"
 		},
 		{
 			"name": "Danielle Thompson",
-			"link": "https://github.com/logicallysynced/"
+			"github": "https://github.com/logicallysynced/"
 		}
 	],
 	"runtime": {

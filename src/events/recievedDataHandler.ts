@@ -129,25 +129,6 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				});
 			}
 
-			if (parsed.RcvShow && parsed.RcvShow['@_monitor_select'] !== null && parsed.RcvShow['@_monitor_select'] !== undefined) {
-				const monSelect = parsed.RcvShow['@_monitor_select'];
-
-				switch(monSelect) {
-					case 0:
-						controllerVariables.selectedMonitor = MonitorChannels.HP1_VOL;
-						break;
-					case 1:
-						controllerVariables.selectedMonitor = MonitorChannels.HP2_VOL;
-						break;
-					case 2:
-						controllerVariables.selectedMonitor = MonitorChannels.MON_VOL;
-						break;
-				}
-
-			} else {
-				controllerVariables.selectedMonitor = MonitorChannels.HP1_VOL;
-			}
-
 
 			//Setup audio channels
 
