@@ -1,3 +1,6 @@
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/bitfocus/companion-module-rode-rcv/total)
+![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/bitfocus/companion-module-rode-rcv/latest/total)
+
 ## RØDECaster Video Companion Plugin
 This module can be used to communicate with a RØDECaster Video switcher.
   
