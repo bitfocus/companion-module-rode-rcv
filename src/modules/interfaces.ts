@@ -21,6 +21,7 @@ export interface AudioAudioSourceCh {
 	submix?: SubmixChannels;
 	level?: number;
 	muted?: boolean;
+	scene_mute?: boolean;
 	disabled?: boolean;
 	linked?: boolean;
 }

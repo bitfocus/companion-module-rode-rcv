@@ -63,8 +63,10 @@ export function UpdateActions(instance: RCVInstance): void {
 						if (controllerVariables.allowStream) {
 							if (controllerVariables.streaming) {
 								command = commands.STOP_STREAM;
+								controllerVariables.streaming = false;
 							} else {
 								command = commands.START_STREAM;
+								controllerVariables.streaming = true;
 							}
 						} else {
 							ConsoleLog(instance, `Streaming not allowed`, LogLevel.ERROR, false);
@@ -453,6 +455,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					choices: [
 						{ id: 'volume', label: 'Change Volume' },
 						{ id: 'gain', label: 'Change Gain' },
+						{ id: 'setmute', label: 'Set Mute' },
 						{ id: 'mute', label: 'Toggle Mute' },
 					],
 					default: 'volume',
@@ -545,11 +548,18 @@ export function UpdateActions(instance: RCVInstance): void {
 					isVisible: (options) => { return options.variable === true && options.mechanism === 'fade'; }
 				},
 				{
+					id: 'ismuted',
+					type: 'checkbox',
+					label: 'Mute State',
+					default: false,
+					isVisible: (options) => { return options.action === 'setmute' }
+				},
+				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-					isVisible: (options) => { return options.mechanism !== 'relative' && options.action !== 'mute'; }
+					isVisible: (options) => { return options.mechanism !== 'relative' && options.action !== 'mute' && options.action !== 'setmute' ; }
 				}
 			],
 			learn: (ev, context) => {
@@ -582,6 +592,17 @@ export function UpdateActions(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							volume_value: outputLevel,
+						}
+					} else if (action == 'setmute') {
+						const currentMute = mixer.submixes[mixList[_submix].id].muted;
+
+						if (currentMute === undefined) {
+							return undefined;
+						}
+
+						return {
+							...ev.options,
+							ismuted: !currentMute,
 						}
 					}
 
@@ -717,6 +738,7 @@ export function UpdateActions(instance: RCVInstance): void {
 								mixer.submixes[mixList[_submix].id].level = targetLevel;
 
 								sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, targetLevel);
+								instance.checkFeedbacks('audio_sources');
 
 							}
 
@@ -792,11 +814,14 @@ export function UpdateActions(instance: RCVInstance): void {
 									});
 
 									ConsoleLog(instance, `Setting variable ${varName} to value ${floatToDb(newLevel)}`, LogLevel.DEBUG, false);
-
+									instance.checkFeedbacks('audio_sources');
 								}
+
+								instance.checkFeedbacks('audio_sources');
 						
 								//sendOSCCommand(`/submix/stream/${mixerNo}/level`, newLevel);
 								sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, newLevel);
+								
 							
 							}, interval);
 						
@@ -810,10 +835,45 @@ export function UpdateActions(instance: RCVInstance): void {
 								finalLevel = 0.9999999999; //This alleviates a glitch which causes the volume to go to 0 if 1 is sent.
 							}
 
+							mixer.submixes[mixList[_submix].id].level = finalLevel;
+
+							const varName = `${getKeyByValue(audioChannels, _channel).toLocaleLowerCase()}-${_submix}_setlevel`;
+							if (instance.variables.some(variable => variable.variableId === varName)) {
+
+								instance.setVariableValues({
+									[varName]: floatToDb(finalLevel).toString(),
+								});
+
+								ConsoleLog(instance, `Setting variable ${varName} to value ${floatToDb(finalLevel)}`, LogLevel.DEBUG, false);
+								instance.checkFeedbacks('audio_sources');
+							}
+							
+							instance.checkFeedbacks('audio_sources');
+
 							//mixer.submixes[mixList[mix].id].level = outputLevel;
 							await sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, finalLevel);
 						}
 
+					} else if (action == 'setmute') {
+						const isMuted = ev.options.ismuted as boolean;
+
+						let mute = 0;
+
+						if (isMuted) {
+							mute = 1;
+						}
+
+						mixer.submixes[mixList[_submix].id].muted = isMuted;
+						instance.checkFeedbacks('audio_sources');
+
+						//Unset any scene mute
+						if (mixer.submixes[mixList[_submix].id].scene_mute) {
+							await sendOSCCommand(instance, `/audioSource/${mixerNo}/scene_mute`, 0);
+							await sendOSCCommand(instance, `/audioSource/${mixerNo}/scene_mute_ms`, 0);
+							mixer.submixes[mixList[_submix].id].scene_mute = false;
+						}
+
+						await sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/mute`, mute);
 					} else if (action == 'mute') {
 						let mute = 0;
 
@@ -821,6 +881,14 @@ export function UpdateActions(instance: RCVInstance): void {
 							mute = 0;
 						} else {
 							mute = 1;
+						}
+
+						//Unset any scene mute
+						if (mixer.submixes[mixList[_submix].id].scene_mute) {
+							await sendOSCCommand(instance, `/audioSource/${mixerNo}/scene_mute`, 0);
+							await sendOSCCommand(instance, `/audioSource/${mixerNo}/scene_mute_ms`, 0);
+							mixer.submixes[mixList[_submix].id].scene_mute = false;
+							mute = 0;
 						}
 
 						mixer.submixes[mixList[_submix].id].muted = mute === 1 ? true : false;
@@ -1393,7 +1461,7 @@ export function UpdateActions(instance: RCVInstance): void {
 				{
 					id: 'keying_source',
 					type: 'dropdown',
-					label: 'Key Source',
+					label: 'Background',
 					choices: keySourceChoices,
 					default: keySourceChoices[0]?.id,
 					isVisible: (options) => { return options.keying_type !== 'none' && options.action !== 'disable'; }
@@ -1415,8 +1483,8 @@ export function UpdateActions(instance: RCVInstance): void {
 				const value = ev.options.control as buttonPressInputsType;
 				const keying_type = ev.options.keying_type as string;
 				const keying_col = ev.options.keying_col as string;
-				const keying_source = ev.options.keying_source as buttonPressInputsType | buttonPressMediaType;
 				const action = ev.options.action as string;
+				const keying_source = ev.options.keying_source as buttonPressInputsType | buttonPressMediaType | string;;
 
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
@@ -1436,21 +1504,26 @@ export function UpdateActions(instance: RCVInstance): void {
 							buttonList[value].keyingCol = keyingCol.BLUE;
 						}
 
-						if (keying_source && buttonList.hasOwnProperty(keying_source)) {
-							const source = buttonList[keying_source];
+						if (keying_source) {
+							if (keying_source === 'transparent') {
+								await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, '');
+								await sendOSCCommand(instance, `/videoIn/${button.id+1}/source_file`, '');
 
-							if (source.optgroup === "Media") {
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'mediaButton');
+							} else if (buttonList.hasOwnProperty(keying_source)) {
+								const source = buttonList[keying_source];
 
-							} else if (source.optgroup === "Inputs") {
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'videoInput');
-
+								if (source.optgroup === "Media") {
+									await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'mediaButton');
+	
+								} else if (source.optgroup === "Inputs") {
+									await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'videoInput');
+	
+								}
+	
+								await sendOSCCommand(instance, `/videoIn/${button.id+1}/source_file`, `${source.id+1}`);
 							}
-
-
-							await sendOSCCommand(instance, `/videoIn/${button.id+1}/source_file`, `${source.id+1}`);
-							
 						}
+						
 
 					} else if (action === 'disable' || (action == 'toggle' && button.keyingMode !== keyingMode.NONE)) {
 
@@ -1493,6 +1566,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					choices: [
 						{ id: 'outputA', label: 'HDMI A' },
 						{ id: 'outputB', label: 'HDMI B' },
+						{ id: 'outputUVC1', label: 'USB 1' },
 					],
 					default: 'outputA',
 				},
@@ -1504,6 +1578,12 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'program', label: 'Program' },
 						{ id: 'preview', label: 'Preview' },
 						{ id: 'multi', label: 'Multiview' },
+						{ id: 'camera1', label: 'Camera 1' },
+						{ id: 'camera2', label: 'Camera 2' },
+						{ id: 'camera3', label: 'Camera 3' },
+						{ id: 'camera4', label: 'Camera 4' },
+						{ id: 'camera5', label: 'Camera 5' },
+						{ id: 'camera6', label: 'Camera 6' },
 					],
 					default: 'multi',
 				}
@@ -1523,6 +1603,9 @@ export function UpdateActions(instance: RCVInstance): void {
 				} else if (output === routingOutputs.HDMI_B) {
 					source = controllerVariables.hdmi_B_output;
 					
+				} else if (output === routingOutputs.UVC_1) {
+					source = controllerVariables.uvc_1_output;
+					
 				}
 
 				return {
@@ -1541,6 +1624,8 @@ export function UpdateActions(instance: RCVInstance): void {
 				} else if (output === routingOutputs.HDMI_B) {
 					await sendOSCCommand(instance, commands.HDMI_B_OUTPUT[0].toString(), source);
 
+				} else if (output === routingOutputs.UVC_1) {
+					await sendOSCCommand(instance, commands.UVC_1_OUTPUT[0].toString(), source);
 				}
 
             },

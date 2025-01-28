@@ -255,12 +255,19 @@ export enum keyingColStatic {
 export enum routingOutputs {
 	HDMI_A = 'outputA',
 	HDMI_B = 'outputB',
+	UVC_1 =  'outputUVC1'
 }
 
 export enum routingSources {
 	PROGRAM = 'program',
 	PREVIEW = 'preview',
-	MULTIVIEW = 'multi'
+	MULTIVIEW = 'multi',
+	CAMERA1 = 'camera1',
+	CAMERA2 = 'camera2',
+	CAMERA3 = 'camera3',
+	CAMERA4 = 'camera4',
+	CAMERA5 = 'camera5',
+	CAMERA6 = 'camera6'
 }
 
 export enum pressMode {

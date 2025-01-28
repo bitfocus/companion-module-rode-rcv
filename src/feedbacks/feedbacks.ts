@@ -749,6 +749,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'volume', label: 'Set Volume' },
 						{ id: 'gain', label: 'Set Gain' },
 						{ id: 'mute', label: 'Mute' },
+						{ id: 'scmute', label: 'Scene Mute' },
 					],
 					default: 'volume'
 				},
@@ -772,7 +773,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'notequal', label: '!=' },
 					],
 					default: 'equal',
-					isVisible: (options) => { return options.action !== 'mute'; }
+					isVisible: (options) => { return (options.action !== 'mute' && options.action !== 'scmute'); }
 				},
 				{
 					id: 'volume_value',
@@ -824,11 +825,18 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					isVisible: (options) => { return options.action === 'mute'; }
 				},
 				{
+					id: 'scmuted_value',
+					type: 'checkbox',
+					label: 'Is Scene Muted',
+					default: true,
+					isVisible: (options) => { return options.action === 'scmute'; }
+				},
+				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-					isVisible: (options) => { return options.action !== 'mute'; }
+					isVisible: (options) => { return (options.action !== 'mute' && options.action !== 'scmute'); }
 				}
 				
 			],
@@ -874,6 +882,17 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							muted_value: muted,
+						}
+					} else if (action === 'scmute') {
+						const scmuted = mixer.submixes[mixList[_submix].id].scene_mute;
+
+						if (scmuted === undefined) {
+							return undefined;
+						}
+
+						return {
+							...ev.options,
+							scmuted_value: scmuted,
 						}
 					} else if (action === 'live') {
 						if (!controllerVariables.returnLiveLevels) {
@@ -986,6 +1005,12 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						const muted = mixer.submixes[mixList[_submix].id].muted;
 
 						return checkValue === muted;
+
+					} else if (action === 'scmute') {
+						const checkValue = feedback.options.scmuted_value as boolean;
+						const scmuted = mixer.submixes[mixList[_submix].id].scene_mute;
+
+						return checkValue === scmuted;
 
 					} else if (action === 'live') {
 						if (!controllerVariables.returnLiveLevels) {
@@ -1174,6 +1199,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					choices: [
 						{ id: 'outputA', label: 'HDMI A' },
 						{ id: 'outputB', label: 'HDMI B' },
+						{ id: 'outputUVC1', label: 'USB 1' },
 					],
 					default: 'outputA',
 				},
@@ -1185,6 +1211,12 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'program', label: 'Program' },
 						{ id: 'preview', label: 'Preview' },
 						{ id: 'multi', label: 'Multiview' },
+						{ id: 'camera1', label: 'Camera 1' },
+						{ id: 'camera2', label: 'Camera 2' },
+						{ id: 'camera3', label: 'Camera 3' },
+						{ id: 'camera4', label: 'Camera 4' },
+						{ id: 'camera5', label: 'Camera 5' },
+						{ id: 'camera6', label: 'Camera 6' },
 					],
 					default: 'multi',
 				}
@@ -1204,6 +1236,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 				} else if (output === routingOutputs.HDMI_B) {
 					source = controllerVariables.hdmi_B_output;
 					
+				} else if (output === routingOutputs.UVC_1) {
+					source = controllerVariables.uvc_1_output;
+					
 				}
 
 				return {
@@ -1222,6 +1257,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					}
 				} else if (output === routingOutputs.HDMI_B) {
 					if (controllerVariables.hdmi_B_output === source) {
+						return true;
+					}
+				} else if (output === routingOutputs.UVC_1) {
+					if (controllerVariables.uvc_1_output === source) {
 						return true;
 					}
 				}

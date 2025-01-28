@@ -247,12 +247,19 @@ export const overlayButtonChoices = Object.entries(filterButtonListByEnum(button
 }));
 
 export const keySourceChoices = [
+	{
+		id: 'transparent',
+		label: 'Transparent',
+	},
+	...[
 		...filterButtonsListByEnum(buttonList, buttonPressInputsType, [buttonPressInputsType.INPUT_FTP]),
-		...filterButtonsListByEnum(buttonList, buttonPressMediaType)
-	].map(([key, button]) => ({
+		...filterButtonsListByEnum(buttonList, buttonPressMediaType),
+	].map(([key, button]: [string, { title: string }]) => ({
 		id: key,
-		label: button.title
-}));
+		label: button.title,
+	})),
+];
+
 
 export const audioMixesChoices = Object.entries(mixList).map(([key, mix]) => ({
 	id: key,

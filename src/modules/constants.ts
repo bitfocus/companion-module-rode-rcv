@@ -57,7 +57,8 @@ export const controllerVariables = {
 	currentAudioLevels: null as MeterValues,
 	returnLiveLevels: true,
 	hdmi_A_output: routingSources.MULTIVIEW,
-	hdmi_B_output: routingSources.MULTIVIEW
+	hdmi_B_output: routingSources.MULTIVIEW,
+	uvc_1_output: routingSources.MULTIVIEW
 };
 
 export const allButtonPressTypes = [

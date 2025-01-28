@@ -91,6 +91,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				ConsoleLog(instance, `HDMI Output 2 set to ${controllerVariables.hdmi_A_output}`, LogLevel.DEBUG, false);
 			}
 
+			if (parsed.RcvShow && parsed.RcvShow['@_usb1_uvc_out']) {
+				controllerVariables.uvc_1_output = parsed.RcvShow['@_usb1_uvc_out'];
+				ConsoleLog(instance, `UVC Output 1 set to ${controllerVariables.uvc_1_output}`, LogLevel.DEBUG, true);
+			}
+
 			//Hande Framerate
 			if (parsed.RcvShow && parsed.RcvShow['@_frameRate']) {
 
@@ -1453,6 +1458,30 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				ConsoleLog(instance, `Mixer channel ${oldName} (${mixerCh}) updated with name ${mixerChannels[mixerCh].name}.`, LogLevel.DEBUG, false);
 			}
 
+		} else if (property === 'scene_mute') {
+
+			if (mixerChannels.hasOwnProperty(mixerCh)) {
+
+				let scene_mute = false;
+
+				if (args[0] === 1) {
+					scene_mute = true;
+					
+				} else if (args[0] === 0) {
+					scene_mute = false;
+
+				}
+
+				const mixer = mixerChannels[mixerCh];	
+	
+				for (const submix of mixer.submixes) {
+					submix.scene_mute = scene_mute;
+				}
+
+				ConsoleLog(instance, `Mixer channel ${mixerChannels[mixerCh].name} (${mixerCh}) scene mute set to ${scene_mute}.`, LogLevel.DEBUG, true);
+
+			}
+
 		}
 
 		instance.checkFeedbacks(FeedbackId.audio_sources);
@@ -1493,18 +1522,18 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		instance.setVariableValues({
-			'wireless_1_connected': wirelessMic[4].connected,
-			'wireless_1_signal': wirelessMic[4].signal_quality,
-			'wireless_1_battery': wirelessMic[4].battery_level,
-			'wireless_1_charging': wirelessMic[4].charging,
-			'wireless_1_muted': wirelessMic[4].remote_mute,
-			'wireless_1_record': wirelessMic[4].remote_record,
-			'wireless_2_connected': wirelessMic[5].connected,
-			'wireless_2_signal': wirelessMic[5].signal_quality,
-			'wireless_2_battery': wirelessMic[5].battery_level,
-			'wireless_2_charging': wirelessMic[5].charging,
-			'wireless_2_muted': wirelessMic[5].remote_mute,
-			'wireless_2_record': wirelessMic[5].remote_record,
+			'wireless1_connected': wirelessMic[4].connected,
+			'wireless1_signal': wirelessMic[4].signal_quality,
+			'wireless1_battery': wirelessMic[4].battery_level,
+			'wireless1_charging': wirelessMic[4].charging,
+			'wireless1_muted': wirelessMic[4].remote_mute,
+			'wireless1_record': wirelessMic[4].remote_record,
+			'wireless2_connected': wirelessMic[5].connected,
+			'wireless2_signal': wirelessMic[5].signal_quality,
+			'wireless2_battery': wirelessMic[5].battery_level,
+			'wireless2_charging': wirelessMic[5].charging,
+			'wireless2_muted': wirelessMic[5].remote_mute,
+			'wireless2_record': wirelessMic[5].remote_record,
 		});
 
 		return;
@@ -1564,7 +1593,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		return;
 	}
 
-	// Handle HDMI Outputs 
+	// Handle HDMI/UVC Outputs 
 	if (command.includes('/show/hdmiOut')) {
 		const key = command.split('/');
 		const output = parseInt(key[3]);
@@ -1576,6 +1605,19 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		ConsoleLog(instance, `HDMI Output ${output} set to ${args[0]}`, LogLevel.DEBUG, false);
+		return;
+	}
+
+	if (command.includes('/show/usbOut')) {
+		const key = command.split('/');
+		const output = parseInt(key[3]);
+
+		if (output === 1) {
+			controllerVariables.uvc_1_output = args[0];
+		}
+
+		ConsoleLog(instance, `UVC Output ${output} set to ${args[0]}`, LogLevel.DEBUG, true);
+		return;
 	}
 
 

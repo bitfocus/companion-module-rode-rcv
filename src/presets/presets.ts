@@ -1,7 +1,7 @@
 import { CompanionPresetDefinitions, combineRgb } from '@companion-module/base';
 import { RCVInstance } from '../index.js';
 import { filterButtonListByEnum, inputButtonChoices } from '../helpers/commonHelpers.js';
-import { buttonList } from '../modules/constants.js';
+import { buttonList, channelList } from '../modules/constants.js';
 import { audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, LogLevel, MixerChannels, SubmixChannels } from '../modules/enums.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { ActionId } from '../actions/actions.js';
@@ -585,97 +585,106 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		],
 	};
 
-	presets['Audio Source'] = {
-		type: 'button',
-		category: 'Audio',
-		name: 'Audio Source Example',
-		style: {
-			text: 'Sounds\n$(RCV:sounds_livelevelL)',
-			size: 'auto',
-			color: Col_White,
-			bgcolor: Col_Black,
-		},
-		steps: [
-			{
-				down: [
+	//Audio Source
+
+	for (const [channel, channelEntry] of Object.entries(channelList)) {
+		const actionId = ActionId.audio_sources;
+		const feedbackId = FeedbackId.audio_sources;
+
+		if (channel) {
+			presets[`AudioSource_${channel}`] = {
+				type: 'button',
+				category: 'Audio',
+				name: channelEntry.title,
+				style: {
+					text: channelEntry.title,
+					size: 'auto',
+					color: Col_White,
+					bgcolor: Col_Black,
+				},
+				steps: [
 					{
-						// add an action on down press
-						actionId: ActionId.audio_sources,
+						down: [
+							{
+								// add an action on down press
+								actionId: actionId,
+								options: {
+									channel: channel as audioChannels,
+									submix: SubmixChannels.LIVE,
+									action: 'mute',
+								},
+							},
+						],
+						up: [],
+					},
+				],
+				feedbacks: [
+					{
+						feedbackId: feedbackId,
 						options: {
-							channel: audioChannels.SOUNDS,
+							channel: channel as audioChannels,
 							submix: SubmixChannels.LIVE,
-							action: 'mute',
+							action: 'live',
+							comparison: 'lessthanequal',
+							volume_value: '6',
+							variable: false
+						},
+						style: {
+							bgcolor: Col_Red,
+							color: Col_White,
+						},
+					},
+					{
+						feedbackId: feedbackId,
+						options: {
+							channel: channel as audioChannels,
+							submix: SubmixChannels.LIVE,
+							action: 'live',
+							comparison: 'lessthanequal',
+							volume_value: '5',
+							variable: false
+						},
+						style: {
+							bgcolor: Col_Yellow,
+							color: Col_Black,
+						},
+					},
+					{
+						feedbackId: feedbackId,
+						options: {
+							channel: channel as audioChannels,
+							submix: SubmixChannels.LIVE,
+							action: 'live',
+							comparison: 'lessthan',
+							volume_value: '0',
+							variable: false
+						},
+						style: {
+							bgcolor: Col_Green,
+							color: Col_White,
+						},
+					},
+					{
+						feedbackId: feedbackId,
+						options: {
+							channel: channel as audioChannels,
+							submix: SubmixChannels.LIVE,
+							action: 'live',
+							comparison: 'lessthanequal',
+							volume_value: '-59',
+							variable: false
+						},
+						style: {
+							bgcolor: Col_Black,
+							color: Col_White,
 						},
 					},
 				],
-				up: [],
-			},
-		],
-		feedbacks: [
-			{
-				feedbackId: FeedbackId.audio_sources,
-				options: {
-					channel: audioChannels.SOUNDS,
-					submix: SubmixChannels.LIVE,
-					action: 'live',
-					comparison: 'lessthanequal',
-					volume_value: '6',
-					variable: false
-				},
-				style: {
-					bgcolor: Col_Red,
-					color: Col_White,
-				},
-			},
-			{
-				feedbackId: FeedbackId.audio_sources,
-				options: {
-					channel: audioChannels.SOUNDS,
-					submix: SubmixChannels.LIVE,
-					action: 'live',
-					comparison: 'lessthanequal',
-					volume_value: '5',
-					variable: false
-				},
-				style: {
-					bgcolor: Col_Yellow,
-					color: Col_Black,
-				},
-			},
-			{
-				feedbackId: FeedbackId.audio_sources,
-				options: {
-					channel: audioChannels.SOUNDS,
-					submix: SubmixChannels.LIVE,
-					action: 'live',
-					comparison: 'lessthan',
-					volume_value: '0',
-					variable: false
-				},
-				style: {
-					bgcolor: Col_Green,
-					color: Col_White,
-				},
-			},
-			{
-				feedbackId: FeedbackId.audio_sources,
-				options: {
-					channel: audioChannels.SOUNDS,
-					submix: SubmixChannels.LIVE,
-					action: 'live',
-					comparison: 'lessthanequal',
-					volume_value: '-59',
-					variable: false
-				},
-				style: {
-					bgcolor: Col_Black,
-					color: Col_White,
-				},
-			},
-		],
+			};
+
+			ConsoleLog(instance, `Added preset ${channelEntry.title} to Audio Sources pool.`, LogLevel.INFO);
+		}
 	};
-
-
 
 	instance.setPresetDefinitions(presets);
 }
