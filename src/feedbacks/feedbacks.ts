@@ -1,12 +1,15 @@
 import { combineRgb, CompanionFeedbackDefinition, CompanionFeedbackDefinitions, CompanionOptionValues } from '@companion-module/base'
 import type { RCVInstance } from '../index.js'
-import { buttonList, channelList, controllerVariables, mediaSources, mixerChannels, mixList, overlaySources, sceneSources, videoSources } from '../modules/constants.js';
+import { buttonList, channelList, Col_Black, Col_Green, Col_LightBlue, Col_LightPurple, Col_Magenta, Col_PGM, Col_Purple, Col_PVW, Col_White, controllerVariables, mediaSources, mixerChannels, mixList, overlaySources, rcvPhysicalButtons, sceneSources, videoSources } from '../modules/constants.js';
 import { buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, keyingCol, keyingMode, LogLevel, routingOutputs, routingSources } from '../modules/enums.js';
 import { audioChannelsChoices, audioMixesChoices, controlButtonChoices, evaluateComparison, filterButtonListByEnum, inputButtonChoices, mediaButtonChoices, overlayButtonChoices, sceneButtonChoices } from '../helpers/commonHelpers.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { floatToDb } from '../helpers/decibelHelper.js';
-import { ChannelData } from '../modules/interfaces.js';
-import { meterLevelToPercentage } from '../helpers/metersHelper.js';
+import { ChannelData, PresetOptionsBoxes_Custom } from '../modules/interfaces.js';
+import { companionMeter, meterLevelToPercentage } from '../helpers/metersHelper.js';
+import { graphics, presets } from 'companion-module-utils/dist/index.js';
+import { rect, stackImage } from 'companion-module-utils/dist/graphics.js';
+import { PresetOptionsBoxes } from 'companion-module-utils/dist/presets.js';
 
 export enum FeedbackId {
 	control_state = 'control_state',
@@ -20,7 +23,9 @@ export enum FeedbackId {
 	auto_switching = 'auto_switching',
 	logo = 'logo',
 	keying = 'keying',
-	routing = 'routing'
+	routing = 'routing',
+	meters = 'meters',
+	visualSwitcher = 'visualSwitcher'
 }
 
 
@@ -910,9 +915,6 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 							const levelsR_db = floatToDb(meterLevelToPercentage(meters.right?.level || 0));
 							const average_db = (levelsL_db + levelsR_db) / 2;
 
-							console.log(`Level L: ${levelsL_db}`);
-							console.log(`Avg: ${average_db}`);
-
 							return {
 								...ev.options,
 								volume_value: average_db,
@@ -1267,6 +1269,321 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 
 				return false;
 
+            }
+        },
+		[FeedbackId.meters]: {
+            name: 'Audio Meters',
+            type: 'advanced',
+            description: 'Show Audio Meters for live mix channels',
+            defaultStyle: {
+                color: combineRgb(255, 255, 255),
+                bgcolor: combineRgb(255, 0, 0),
+            },
+            showInvert: true,
+            options: [
+				{
+					id: 'channel',
+					type: 'dropdown',
+					label: 'Channel',
+					choices: [
+						{ id: 'master', label: 'Master' },
+						...audioChannelsChoices
+					],
+					default: audioChannelsChoices[0]?.id
+				},
+				{
+					id: 'important-line',
+					type: 'static-text',
+					label: '',
+					value: 'Meters are only available for Live Mix.'
+				},
+				{
+					id: 'orientation',
+					type: 'dropdown',
+					label: 'Orientation',
+					choices: [
+						{ id: 'vertical', label: 'Vertical' },
+						{ id: 'horizontal', label: 'Horizontal' },
+					],
+					default: 'vertical'
+				},
+				{
+					id: 'position',
+					type: 'dropdown',
+					label: 'Position',
+					choices: [
+						{ id: 'tl', label: 'Top Left' },
+						{ id: 'tr', label: 'Top Right' },
+						{ id: 'tm', label: 'Top Middle' },
+						{ id: 'bl', label: 'Bottom Left' },
+						{ id: 'br', label: 'Bottom Right' },
+						{ id: 'bm', label: 'Bottom Middle' },
+					],
+					default: 'tr'
+				},
+				
+			],
+            callback: async (feedback, context) => {
+				const _channel = feedback.options.channel as string;
+				const orientation = feedback.options.orientation as 'horizontal' | 'vertical';
+				const position = feedback.options.position as 'tl' | 'tr' | 'tm' | 'bl' | 'br' | 'bm';
+
+				let meter1 = 0;
+				let meter2 = 0;
+
+				let meter = companionMeter({
+					width: feedback.image.width,
+					height: feedback.image.height,
+					meter1: 0,
+					meter2: 0,
+					muted: false
+				}, orientation, position);
+
+				const meterData = controllerVariables.currentAudioLevels;
+
+				if (_channel === 'master') {
+
+					if (meterData && meterData.master) {
+						const master = meterData.master as ChannelData;
+						
+						meter1 = meterLevelToPercentage(master.left?.level || 0);
+						meter2 = meterLevelToPercentage(master.right?.level || 0);
+
+						meter = companionMeter({
+							width: feedback.image.width,
+							height: feedback.image.height,
+							meter1: meter1 * 100,
+							meter2: meter2 * 100,
+							muted: false
+						}, orientation, position);
+					}
+
+				} else {
+					if (mixerChannels.hasOwnProperty(_channel)) {
+						const mixer = mixerChannels[_channel];
+						const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]);
+	
+						if (meterData && meterData.outputs.hasOwnProperty(mixerNo)) {
+							const meters = meterData.outputs[mixerNo] as ChannelData;
+							
+							meter1 = meterLevelToPercentage(meters.left?.level || 0);
+							meter2 = meterLevelToPercentage(meters.right?.level || 0);
+	
+							meter = companionMeter({
+								width: feedback.image.width,
+								height: feedback.image.height,
+								meter1: meter1 * 100,
+								meter2: meter2 * 100,
+								muted: mixer.submixes[0].muted
+							}, orientation, position);
+			
+						}
+	
+						
+					}
+				}
+
+				return {
+					imageBuffer: meter
+				}
+            }
+        },
+		[FeedbackId.visualSwitcher]: {
+            name: 'Visual Switcher',
+            type: 'advanced',
+            description: 'Show a visual representative of the main RCV buttons',
+            defaultStyle: {
+                color: combineRgb(255, 255, 255),
+                bgcolor: combineRgb(255, 0, 0),
+            },
+            showInvert: true,
+            options: [
+				{
+					id: 'position',
+					type: 'dropdown',
+					label: 'Position',
+					choices: [
+						{ id: 'top', label: 'Top' },
+						{ id: 'middle', label: 'Middle' },
+						{ id: 'bottom', label: 'Bottom' },
+					],
+					default: 'top'
+				},
+				
+			],
+            callback: async (feedback, context) => {
+
+				const position = feedback.options.position as 'top' | 'bottom' | 'middle';
+
+				const boxes_top = (options: PresetOptionsBoxes_Custom): Uint8Array => {
+					const boxOptions = [...options.boxes].slice(0, 7)
+					const boxArray: Uint8Array[] = []
+				  
+					boxOptions.forEach((boxOption, index) => {
+					  let offsetX = 0
+					  let offsetY = 0
+				  
+					  if (position === 'top' || position === 'bottom') {
+						offsetY = position === 'top' ? 2 : options.height - 24
+						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
+					  } else if (position === 'middle') {
+						offsetY = options.height / 2;
+						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
+					  }
+				  
+					  const box = rect({
+						width: options.width,
+						height: options.height,
+						offsetX,
+						offsetY,
+						color: boxOption.borderColor,
+						opacity: boxOption.borderOpacity,
+						fillColor: boxOption.fillColor,
+						fillOpacity: boxOption.fillOpacity,
+						rectHeight: 8,
+						rectWidth: 8,
+						strokeWidth: 1,
+					  })
+				  
+					  boxArray.push(box)
+					})
+				  
+					return stackImage(boxArray)
+				}
+
+				const boxes_bottom = (options: PresetOptionsBoxes_Custom): Uint8Array => {
+					const boxOptions = [...options.boxes].slice(0, 7)
+					const boxArray: Uint8Array[] = []
+				  
+					boxOptions.forEach((boxOption, index) => {
+					  let offsetX = 0
+					  let offsetY = 0
+				  
+					  if (position === 'top' || position === 'bottom') {
+						offsetY = position === 'top' ? 12 : options.height - 14
+						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
+					  } else if (position === 'middle') {
+						offsetY = options.height / 2 - 10;
+						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
+					  }
+				  
+					  const box = rect({
+						width: options.width,
+						height: options.height,
+						offsetX,
+						offsetY,
+						color: boxOption.borderColor,
+						opacity: boxOption.borderOpacity,
+						fillColor: boxOption.fillColor,
+						fillOpacity: boxOption.fillOpacity,
+						rectHeight: 8,
+						rectWidth: 8,
+						strokeWidth: 1,
+					  })
+				  
+					  boxArray.push(box)
+					})
+				  
+					return stackImage(boxArray)
+				}
+
+				const button: { [buttonId: number]: {col: number }} = {
+					1: { col: Col_Black },
+					2: { col: Col_Black },
+					3: { col: Col_Black },
+					4: { col: Col_Black },
+					5: { col: Col_Black },
+					6: { col: Col_Black },
+					7: { col: Col_Black },
+					8: { col: Col_Black },
+					9: { col: Col_Black },
+					10: { col: Col_Black },
+					11: { col: Col_Black },
+					12: { col: Col_Black },
+					13: { col: Col_Black },
+					14: { col: Col_Black }
+				};
+
+				if (rcvPhysicalButtons) {
+					for (const [buttonId, col] of Object.entries(rcvPhysicalButtons)) {
+						switch(col) {
+							case 0:
+								button[buttonId] = { col: Col_Black };
+								break;
+							case 1:
+								button[buttonId] = { col: Col_Black };
+								break;
+							case 2:
+								button[buttonId] = { col: Col_Black };
+								break;
+							case 3:
+								button[buttonId] = { col: Col_White };
+								break;
+							case 4:
+								button[buttonId] = { col: Col_PGM };
+								break;
+							case 5:
+								button[buttonId] = { col: Col_PVW };
+								break;
+							case 7:
+								button[buttonId] = { col: Col_Magenta };
+								break;
+							case 8:
+								button[buttonId] = { col: Col_LightBlue };
+								break;
+							case 10:
+								button[buttonId] = { col: Col_Green };
+								break;
+							case 26:
+								button[buttonId] = { col: Col_LightPurple };
+								break;
+							case 38:
+								button[buttonId] = { col: Col_Purple };
+								break;
+							default:
+								button[buttonId] = { col: Col_Black };
+								break;
+						}
+					}
+				}
+
+				const switch_top = boxes_top({
+					width: feedback.image.width,
+					height: feedback.image.height,
+					position: position,
+					boxes: [
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[1].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[2].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[3].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[4].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[5].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[6].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[7].col, fillOpacity: 255 }
+					]
+				});
+
+				const switch_bottom = boxes_bottom({
+					width: feedback.image.width,
+					height: feedback.image.height,
+					position: position,
+					boxes: [
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[8].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[9].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[10].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[11].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[12].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[13].col, fillOpacity: 255 },
+						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[14].col, fillOpacity: 255 },
+					]
+				});
+
+				
+
+				const visualSwitch = graphics.stackImage([switch_top, switch_bottom]);
+			
+				return {
+					imageBuffer: visualSwitch
+				}
             }
         },
 	};

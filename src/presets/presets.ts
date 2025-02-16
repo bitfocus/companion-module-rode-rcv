@@ -1,31 +1,13 @@
 import { CompanionPresetDefinitions, combineRgb } from '@companion-module/base';
 import { RCVInstance } from '../index.js';
-import { filterButtonListByEnum, inputButtonChoices } from '../helpers/commonHelpers.js';
-import { buttonList, channelList } from '../modules/constants.js';
-import { audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, LogLevel, MixerChannels, SubmixChannels } from '../modules/enums.js';
+import { filterButtonListByEnum } from '../helpers/commonHelpers.js';
+import { buttonList, channelList, Col_Black, Col_LightBlue, Col_PGM, Col_PVW, Col_Recording, Col_RecordReady, Col_Red, Col_Standby, Col_Streaming, Col_StreamReady, Col_Unavailable, Col_White } from '../modules/constants.js';
+import { audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, LogLevel, MixerChannels, SubmixChannels, transitionType } from '../modules/enums.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { ActionId } from '../actions/actions.js';
 import { FeedbackId } from '../feedbacks/feedbacks.js';
 
 const presets: CompanionPresetDefinitions = {};
-
-const Col_Black = combineRgb(0, 0, 0);
-const Col_White = combineRgb(255, 255, 255);
-const Col_PGM = combineRgb(252, 3, 98);
-const Col_PVW = combineRgb(3, 252, 148);
-const Col_Standby = combineRgb(79, 79, 79);
-const Col_Unavailable = combineRgb(0, 0, 0);
-const Col_Recording = combineRgb(252, 3, 98);
-const Col_Streaming = combineRgb(252, 3, 98);
-const Col_RecordReady = combineRgb(3, 252, 148);
-const Col_StreamReady = combineRgb(3, 252, 148);
-const Col_Red = combineRgb(255, 0, 0);
-const Col_Green = combineRgb(0, 255, 0);
-const Col_Yellow = combineRgb(255, 255, 0);
-const Col_Orange = combineRgb(255, 165, 0);
-const Col_Purple = combineRgb(185, 70, 255);
-const Col_LightBlue = combineRgb(0, 255, 255);
-
 export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 	//Populate Presets for Inputs
@@ -44,7 +26,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: currentButton.title,
 				style: {
 					text: currentButton.title,
-					size: 'auto',
+					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
 				},
@@ -140,7 +122,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: currentButton.title,
 				style: {
 					text: currentButton.title,
-					size: 'auto',
+					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
 				},
@@ -236,7 +218,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: currentButton.title,
 				style: {
 					text: currentButton.title,
-					size: 'auto',
+					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
 				},
@@ -332,7 +314,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: currentButton.title,
 				style: {
 					text: currentButton.title,
-					size: 'auto',
+					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
 				},
@@ -419,7 +401,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		name: buttonList[buttonPressControlType.BUTTON_RECORD].title,
 		style: {
 			text: buttonList[buttonPressControlType.BUTTON_RECORD].title,
-			size: 'auto',
+			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
 		},
@@ -467,7 +449,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		name: buttonList[buttonPressControlType.BUTTON_STREAM].title,
 		style: {
 			text: buttonList[buttonPressControlType.BUTTON_STREAM].title,
-			size: 'auto',
+			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
 		},
@@ -515,7 +497,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		name: buttonList[buttonPressControlType.BUTTON_FTB].title,
 		style: {
 			text: buttonList[buttonPressControlType.BUTTON_FTB].title,
-			size: 'auto',
+			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
 		},
@@ -583,13 +565,160 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 			},
 		],
+		
 	};
+
+	presets[buttonPressControlType.BUTTON_CUT] = {
+		type: 'button',
+		category: 'Controls',
+		name: buttonList[buttonPressControlType.BUTTON_CUT].title,
+		style: {
+			text: buttonList[buttonPressControlType.BUTTON_CUT].title,
+			size: '14',
+			color: Col_White,
+			bgcolor: Col_Black,
+		},
+		steps: [
+			{
+				down: [
+					{
+						// add an action on down press
+						actionId: ActionId.control_buttons,
+						options: {
+							control: buttonPressControlType.BUTTON_CUT,
+						},
+					},
+				],
+				up: [],
+			},
+		],
+		feedbacks: [],
+		
+	};
+
+	presets[buttonPressControlType.BUTTON_AUTO] = {
+		type: 'button',
+		category: 'Controls',
+		name: buttonList[buttonPressControlType.BUTTON_AUTO].title,
+		style: {
+			text: buttonList[buttonPressControlType.BUTTON_AUTO].title,
+			size: '14',
+			color: Col_White,
+			bgcolor: Col_Black,
+		},
+		steps: [
+			{
+				down: [
+					{
+						// add an action on down press
+						actionId: ActionId.control_buttons,
+						options: {
+							control: buttonPressControlType.BUTTON_AUTO,
+						},
+					},
+				],
+				up: [],
+			},
+		],
+		feedbacks: [
+			{
+				feedbackId: FeedbackId.control_state,
+				options: {
+					control: buttonPressControlType.BUTTON_AUTO,
+					variable: false,
+					action_2: buttonStates.ACTIVE,
+				},
+				style: {
+					color: Col_White,
+					bgcolor: Col_PGM,
+				},
+			},
+			{
+				feedbackId: FeedbackId.auto_switching,
+				options: {
+					action: 'enabled',
+				},
+				style: {
+					color: Col_White,
+					bgcolor: Col_LightBlue,
+				},
+			},
+		]
+	};
+
+	presets['AutoSwitching'] = {
+		type: 'button',
+		category: 'Controls',
+		name: 'Auto Switching',
+		style: {
+			text: 'Auto Switching',
+			size: '14',
+			color: Col_White,
+			bgcolor: Col_Black,
+		},
+		steps: [
+			{
+				down: [
+					{
+						// add an action on down press
+						actionId: ActionId.auto_switching,
+						options: {
+							action: 'toggle',
+						},
+					},
+				],
+				up: [],
+			},
+		],
+		feedbacks: [
+			{
+				feedbackId: FeedbackId.auto_switching,
+				options: {
+					action: 'enabled',
+				},
+				style: {
+					color: Col_White,
+					bgcolor: Col_LightBlue,
+				},
+			},
+		],
+		
+	};
+
+	presets['ChangeTransition'] = {
+		type: 'button',
+		category: 'Controls',
+		name: 'Change Transition',
+		style: {
+			text: 'Change Transition',
+			size: '14',
+			color: Col_White,
+			bgcolor: Col_Black,
+		},
+		steps: [
+			{
+				down: [
+					{
+						// add an action on down press
+						actionId: ActionId.transitions,
+						options: {
+							action: 'transition',
+							transition: transitionType.FADE
+						},
+					},
+				],
+				up: [],
+			},
+		],
+		feedbacks: [],
+		
+	};
+	
 
 	//Audio Source
 
 	for (const [channel, channelEntry] of Object.entries(channelList)) {
 		const actionId = ActionId.audio_sources;
-		const feedbackId = FeedbackId.audio_sources;
 
 		if (channel) {
 			presets[`AudioSource_${channel}`] = {
@@ -598,7 +727,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: channelEntry.title,
 				style: {
 					text: channelEntry.title,
-					size: 'auto',
+					size: '14',
+					alignment: 'left:top',
 					color: Col_White,
 					bgcolor: Col_Black,
 				},
@@ -620,63 +750,24 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				],
 				feedbacks: [
 					{
-						feedbackId: feedbackId,
+						feedbackId: FeedbackId.meters,
+						options: {
+							channel: channel as audioChannels,
+							orientation: 'vertical',
+							position: 'br'
+						}
+					},
+					{
+						feedbackId: FeedbackId.audio_sources,
 						options: {
 							channel: channel as audioChannels,
 							submix: SubmixChannels.LIVE,
-							action: 'live',
-							comparison: 'lessthanequal',
-							volume_value: '6',
-							variable: false
+							action: 'mute',
+							muted_value: true
 						},
 						style: {
 							bgcolor: Col_Red,
-							color: Col_White,
-						},
-					},
-					{
-						feedbackId: feedbackId,
-						options: {
-							channel: channel as audioChannels,
-							submix: SubmixChannels.LIVE,
-							action: 'live',
-							comparison: 'lessthanequal',
-							volume_value: '5',
-							variable: false
-						},
-						style: {
-							bgcolor: Col_Yellow,
 							color: Col_Black,
-						},
-					},
-					{
-						feedbackId: feedbackId,
-						options: {
-							channel: channel as audioChannels,
-							submix: SubmixChannels.LIVE,
-							action: 'live',
-							comparison: 'lessthan',
-							volume_value: '0',
-							variable: false
-						},
-						style: {
-							bgcolor: Col_Green,
-							color: Col_White,
-						},
-					},
-					{
-						feedbackId: feedbackId,
-						options: {
-							channel: channel as audioChannels,
-							submix: SubmixChannels.LIVE,
-							action: 'live',
-							comparison: 'lessthanequal',
-							volume_value: '-59',
-							variable: false
-						},
-						style: {
-							bgcolor: Col_Black,
-							color: Col_White,
 						},
 					},
 				],

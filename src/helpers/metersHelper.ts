@@ -6,6 +6,8 @@ import { Buffer } from 'buffer';
 import { ConsoleLog } from '../modules/logger.js';
 import { RCVInstance } from '../index';
 import { controllerVariables, mixerChannels } from '../modules/constants.js';
+import { PresetOptionsMeter1 } from 'companion-module-utils/dist/presets.js';
+import { bar, stackImage } from 'companion-module-utils/dist/graphics.js';
 
 
 /**
@@ -360,3 +362,98 @@ export async function getActiveMixes(instance: RCVInstance): Promise<void> {
         });
     }
 }
+
+export const combineRGB = (r: number, g: number, b: number): number => {
+	return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)
+}
+
+export const companionMeter = (options: PresetOptionsMeter1, orientation: 'horizontal' | 'vertical' = 'vertical', position: 'tl' | 'tr' | 'tm' | 'bl' | 'br' | 'bm' = 'br'): Uint8Array => {
+	const muted = options.muted !== undefined ? options.muted : false
+	const bars2 = options.meter2 !== undefined
+
+	const colours = [
+		{
+			size: 65,
+			color: muted ? combineRGB(0, 255, 255) : combineRGB(0, 255, 0),
+			background: muted ? combineRGB(0, 255, 255) : combineRGB(0, 255, 0),
+			backgroundOpacity: 64,
+		},
+		{
+			size: 25,
+			color: muted ? combineRGB(0, 192, 192) : combineRGB(255, 234, 0),
+			background: muted ? combineRGB(0, 192, 192) : combineRGB(255, 234, 0),
+			backgroundOpacity: 64,
+		},
+		{
+			size: 10,
+			color: muted ? combineRGB(0, 128, 128) : combineRGB(255, 0, 0),
+			background: muted ? combineRGB(0, 128, 128) : combineRGB(255, 0, 0),
+			backgroundOpacity: 64,
+		}
+	];
+
+	let barLength = 25;
+	let offsetX = 62;
+	let offsetY = 20;
+
+	switch (position) {
+		case 'tl':
+			offsetX = orientation === 'vertical' ? 12 : 5;
+			offsetY = orientation === 'vertical' ? 5 : 12;
+			break;
+		case 'tr':
+			offsetX = orientation === 'vertical' ? 62: 20;
+			offsetY = orientation === 'vertical' ? 5 : 12;
+			break;
+		case 'tm':
+			offsetX = orientation === 'vertical' ? 38: 13;
+			offsetY = orientation === 'vertical' ? 5 : 12;
+			break;
+		case 'bl':
+			offsetX = orientation === 'vertical' ? 12 : 5;
+			offsetY = orientation === 'vertical' ? 20 : 36;
+			break;
+		case 'br':
+			offsetX = orientation === 'vertical' ? 62 : 20;
+			offsetY = orientation === 'vertical' ? 20 : 36;
+			break;
+		case 'bm':
+			offsetX = orientation === 'vertical' ? 38 : 13;
+			offsetY = orientation === 'vertical' ? 20 : 36;
+			break;
+	}
+
+	const bar1 = bar({
+	  width: options.width,
+	  height: options.height,
+	  colors: colours,
+	  opacity: 255,
+	  offsetX: orientation === 'vertical' ? offsetX - 8 : offsetX,
+	  offsetY: orientation === 'vertical' ? offsetY : offsetY + 8,
+	  barLength: orientation === 'vertical' ? options.height - barLength : options.width - barLength,
+	  barWidth: 6,
+	  value: options.meter1,
+	  type: orientation,
+	})
+  
+	let bar2
+  
+	if (bars2) {
+	  bar2 = bar({
+		width: options.width,
+		height: options.height,
+		colors: colours,
+		opacity: 255,
+		offsetX: offsetX,
+		offsetY: offsetY,
+		barLength: orientation === 'vertical' ? options.height - barLength : options.width - barLength,
+		barWidth: 6,
+		value: options.meter2 as number,
+		type: orientation,
+	  })
+  
+	  return stackImage([bar1, bar2])
+	}
+  
+	return bar1
+  }

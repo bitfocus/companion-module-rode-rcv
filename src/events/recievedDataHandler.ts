@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { commands } from "../modules/commands.js";
-import { submixList, buttonList, controllerVariables, drives, mixerChannels, monitorChannels, timecodes, wirelessMic, videoSources, mediaSources, overlaySources, sceneSources } from '../modules/constants.js';
+import { submixList, buttonList, controllerVariables, drives, mixerChannels, monitorChannels, timecodes, wirelessMic, videoSources, mediaSources, overlaySources, sceneSources, rcvPhysicalButtons } from '../modules/constants.js';
 import { MonitorChannels, SubmixChannels, transtionCategory, RCVSourceModes, buttonPressControlType, LogLevel, keyingMode, keyingCol, audioChannels, MetersChannel, mediaType, pressMode } from '../modules/enums.js';
 import { AudioAudioSourceCh } from "../modules/interfaces.js";
 import { ConsoleLog } from "../modules/logger.js";
@@ -961,6 +961,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 	const sceneButtonsFilter = /\/device\/buttons\/([1-9]|1[0-4])\/colour/;
 	if (sceneButtonsFilter.test(command)) {
 
+		const key = command.split('/');
+		rcvPhysicalButtons[key[3]] = args[0];
+		console.log(`button ${key[3]} set to ${args[0]}`);
+		instance.checkFeedbacks(FeedbackId.visualSwitcher);
+
 		const allButtonPressTypes = [
 			...Object.values(buttonPressControlType),
 		];
@@ -1704,6 +1709,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			if (Object.keys(variableUpdates).length > 0) {
 				instance.setVariableValues(variableUpdates);
 				instance.checkFeedbacks(FeedbackId.audio_sources);
+				instance.checkFeedbacks(FeedbackId.meters);
 			}
 			
 		}

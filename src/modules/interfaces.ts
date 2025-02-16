@@ -1,6 +1,7 @@
 import { Socket } from "net";
 import { MetersChannel, MetersSubmix, SubmixChannels } from "./enums.js";
 import { RCVInstance } from "../index.js";
+import { PresetBox } from "companion-module-utils/dist/presets.js";
 
 export interface ClientInfo {
     socket: Socket;
@@ -45,3 +46,9 @@ export interface MeterValues {
 	inputs: Partial<Record<MetersChannel, ChannelData>>;
 }
 
+export interface PresetOptionsBoxes_Custom {
+	width: number
+	height: number
+	position: 'top' | 'bottom' | 'left' | 'right' | 'middle'
+	boxes: PresetBox[]
+}

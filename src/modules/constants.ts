@@ -1,3 +1,4 @@
+import { combineRgb } from "@companion-module/base/dist/util.js";
 import { commands } from "./commands.js";
 import { MonitorChannels, RCVSourceModes, SubmixChannels, audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, keyingCol, keyingMode, mediaType, pressMode, recordEncoderDisplay, routingSources, streamEncoderDisplay, transitionType, transtionCategory } from "./enums.js";
 import { AudioAudioSourceCh, AudioMixerCh, MeterValues } from "./interfaces.js";
@@ -14,6 +15,26 @@ export const videoSources: { [key: number]: {name: string, source: string, state
 export const sceneSources: { [key: number]: {name: string, state?: number}} = {};
 export const mediaSources: { [key: number]: {name: string, mediaType?: mediaType, state?: number, pressMode?: pressMode}} = {};
 export const overlaySources: { [key: number]: {name: string, state?: number}} = {};
+export const rcvPhysicalButtons: { [buttonId: number]: number } = {};
+
+export const Col_Black = combineRgb(0, 0, 0);
+export const Col_White = combineRgb(255, 255, 255);
+export const Col_PGM = combineRgb(252, 3, 98);
+export const Col_PVW = combineRgb(3, 252, 148);
+export const Col_Standby = combineRgb(79, 79, 79);
+export const Col_Unavailable = combineRgb(0, 0, 0);
+export const Col_Recording = combineRgb(252, 3, 98);
+export const Col_Streaming = combineRgb(252, 3, 98);
+export const Col_RecordReady = combineRgb(3, 252, 148);
+export const Col_StreamReady = combineRgb(3, 252, 148);
+export const Col_Red = combineRgb(255, 0, 0);
+export const Col_Green = combineRgb(0, 153, 0);
+export const Col_Yellow = combineRgb(255, 255, 0);
+export const Col_Orange = combineRgb(255, 165, 0);
+export const Col_Purple = combineRgb(138, 0, 230);
+export const Col_LightPurple = combineRgb(194, 102, 255);
+export const Col_LightBlue = combineRgb(0, 255, 255);
+export const Col_Magenta = combineRgb(255, 102, 255);
 
 export const controllerVariables = {
 	showName: '',
@@ -58,7 +79,7 @@ export const controllerVariables = {
 	returnLiveLevels: true,
 	hdmi_A_output: routingSources.MULTIVIEW,
 	hdmi_B_output: routingSources.MULTIVIEW,
-	uvc_1_output: routingSources.MULTIVIEW
+	uvc_1_output: routingSources.MULTIVIEW,
 };
 
 export const allButtonPressTypes = [
