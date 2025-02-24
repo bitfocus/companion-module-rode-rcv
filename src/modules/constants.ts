@@ -13,7 +13,7 @@ export const submixChannels: { [key: string]: AudioAudioSourceCh } = {};
 export const inputMeters: { [key: number]: number } = {};
 export const videoSources: { [key: number]: {name: string, source: string, state?: number}} = {};
 export const sceneSources: { [key: number]: {name: string, state?: number}} = {};
-export const mediaSources: { [key: number]: {name: string, mediaType?: mediaType, state?: number, pressMode?: pressMode}} = {};
+export const mediaSources: { [key: number]: {name: string, mediaType?: mediaType, state?: number, pressMode?: pressMode, filename?: string}} = {};
 export const overlaySources: { [key: number]: {name: string, state?: number}} = {};
 export const rcvPhysicalButtons: { [buttonId: number]: number } = {};
 

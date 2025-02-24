@@ -1427,7 +1427,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						offsetY = position === 'top' ? 2 : options.height - 24
 						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
 					  } else if (position === 'middle') {
-						offsetY = options.height / 2;
+						offsetY = options.height / 2 - 10;
 						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
 					  }
 				  
@@ -1463,7 +1463,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						offsetY = position === 'top' ? 12 : options.height - 14
 						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
 					  } else if (position === 'middle') {
-						offsetY = options.height / 2 - 10;
+						offsetY = options.height / 2;
 						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
 					  }
 				  

@@ -55,7 +55,10 @@ For more information, please refer to the [Companion documentation](https://gith
 	- Enable/disable keying on input sources.
 - **Video Outputs**
 	- Controls video outputs.
-
+- **Set Media Bank**
+	- Change Media bank settings
+- **Set Overlay Bank**
+	- Change Overlay bank settings
 
 ### Feedbacks
 All feedbacks are booleans, which allows them to be used in triggers.

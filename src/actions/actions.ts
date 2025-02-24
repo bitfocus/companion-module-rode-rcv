@@ -24,6 +24,8 @@ export enum ActionId {
 	keying = 'keying',
 	set_monitors = 'set_monitors',
 	routing = 'routing',
+	setMedia = 'setMedia',
+	setOverlay = 'setOverlay',
 }
 
 export function UpdateActions(instance: RCVInstance): void {
@@ -1784,5 +1786,305 @@ export function UpdateActions(instance: RCVInstance): void {
 			}
         },
 		*/
+		[ActionId.setMedia]: {
+            name: 'Set Media Bank',
+			description: 'Change Media bank settings',
+            options: [
+				{
+					id: 'media',
+					type: 'textinput',
+					label: 'Filename',
+					useVariables: true
+				},
+				{
+					id: 'important-line',
+					type: 'static-text',
+					label: '',
+					value: 'Filename must be an exact match (including extension) from the SD card/Central'
+				},
+				{
+					id: 'bank',
+					type: 'dropdown',
+					label: 'Bank',
+					choices: [
+						...mediaButtonChoices
+					],  
+					default: mediaButtonChoices[0]?.id
+				},
+				{
+					id: 'playback',
+					type: 'dropdown',
+					label: 'Playback mode',
+					choices: [
+						{ id: 'once', label: 'Once' },
+						{ id: 'loop', label: 'Loop' },
+						{ id: 'switch', label: 'Switch To' }
+					],
+					default: 'once',
+				},
+				{
+					id: 'switchto',
+					type: 'dropdown',
+					label: 'Switch to',
+					choices: [
+						...inputButtonChoices,
+						...sceneButtonChoices,
+						...mediaButtonChoices
+					],  
+					default: inputButtonChoices[0]?.id,
+					isVisible: (options) => { return options.playback === 'switch'; }
+				}
+			],
+            callback: async (ev, context) => {
+				const media = await context.parseVariablesInString(ev.options.media.toString()) as string;
+				const playback = ev.options.playback as string;
+				const _bank = ev.options.bank as buttonPressMediaType;
+				const _switchto = ev.options.switchto as buttonPressInputsType | buttonPressSceneType | buttonPressMediaType;
+				let bank;
+				let switchto;
+
+				if (_bank) {
+					switch(_bank) {
+						case buttonPressMediaType.MEDIA_1:
+							bank = '1';
+							break;
+						case buttonPressMediaType.MEDIA_2:
+							bank = '2';
+							break;
+						case buttonPressMediaType.MEDIA_3:
+							bank = '3';
+							break;
+						case buttonPressMediaType.MEDIA_4:
+							bank = '4';
+							break;
+						case buttonPressMediaType.MEDIA_5:
+							bank = '5';
+							break;
+						case buttonPressMediaType.MEDIA_6:
+							bank = '6';
+							break;
+						case buttonPressMediaType.MEDIA_7:
+							bank = '7';
+							break;
+						default:
+							bank = null;
+					}
+				}
+
+				if (_switchto) {
+					switch(_switchto) {
+						case buttonPressInputsType.INPUT_1:
+							switchto = 'videoIn@0';
+							break;
+						case buttonPressInputsType.INPUT_2:
+							switchto = 'videoIn@1';
+							break;
+						case buttonPressInputsType.INPUT_3:
+							switchto = 'videoIn@2';
+							break;
+						case buttonPressInputsType.INPUT_4:
+							switchto = 'videoIn@3';
+							break;
+						case buttonPressInputsType.INPUT_5:
+							switchto = 'videoIn@4';
+							break;
+						case buttonPressInputsType.INPUT_6:
+							switchto = 'videoIn@5';
+							break;
+						case buttonPressSceneType.SCENE_1:
+							switchto = 'scene@0';
+							break;
+						case buttonPressSceneType.SCENE_2:
+							switchto = 'scene@1';
+							break;
+						case buttonPressSceneType.SCENE_3:
+							switchto = 'scene@2';
+							break;
+						case buttonPressSceneType.SCENE_4:
+							switchto = 'scene@3';
+							break;
+						case buttonPressSceneType.SCENE_5:
+							switchto = 'scene@4';
+							break;
+						case buttonPressSceneType.SCENE_6:
+							switchto = 'scene@5';
+							break;
+						case buttonPressSceneType.SCENE_7:
+							switchto = 'scene@6';
+							break;
+						case buttonPressMediaType.MEDIA_1:
+							switchto = 'media@0';
+							break;
+						case buttonPressMediaType.MEDIA_2:
+							switchto = 'media@1';
+							break;
+						case buttonPressMediaType.MEDIA_3:
+							switchto = 'media@2';
+							break;
+						case buttonPressMediaType.MEDIA_4:
+							switchto = 'media@3';
+							break;
+						case buttonPressMediaType.MEDIA_5:
+							switchto = 'media@4';
+							break;
+						case buttonPressMediaType.MEDIA_6:
+							switchto = 'media@5';
+							break;
+						case buttonPressMediaType.MEDIA_7:
+							switchto = 'media@6';
+							break;
+						default:
+							switchto = null;
+					}
+				}
+
+				if (bank) {
+					await sendOSCCommand(instance, `/show/MediaFiles/${bank}/name`, media);
+					await sendOSCCommand(instance, `/show/MediaFiles/${bank}/file_path`, media);
+
+					if (playback === 'switch' && switchto) {
+						await sendOSCCommand(instance, `/show/MediaFiles/${bank}/next_scene_type`, switchto);
+					} else if (playback === 'loop') {
+						await sendOSCCommand(instance, `/show/MediaFiles/${bank}/next_scene_type`, 'loop');
+					} else if (playback === 'once') {
+						await sendOSCCommand(instance, `/show/MediaFiles/${bank}/next_scene_type`, 'none');
+					}
+				} else {
+					ConsoleLog(instance, 'Bank not found', LogLevel.ERROR);
+				}
+            },
+
+			subscribe: (feedback) => {
+				if (!instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setMedia';
+
+					instance.actions[feedback.id] = type;
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+				}
+			},
+
+			unsubscribe: (feedback) => {
+				if (instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setMedia';
+					delete instance.actions[feedback.id];
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+				}
+			}
+        },
+		[ActionId.setOverlay]: {
+            name: 'Set Overlay Bank',
+			description: 'Change Overlay bank settings',
+            options: [
+				{
+					id: 'overlay',
+					type: 'textinput',
+					label: 'Filename',
+					useVariables: true
+				},
+				{
+					id: 'important-line',
+					type: 'static-text',
+					label: '',
+					value: 'Filename must be an exact match (including extension) from the SD card/Central'
+				},
+				{
+					id: 'bank',
+					type: 'dropdown',
+					label: 'Bank',
+					choices: [
+						...overlayButtonChoices
+					],  
+					default: overlayButtonChoices[0]?.id
+				},
+				{
+					id: 'transition',
+					type: 'dropdown',
+					label: 'Transition',
+					choices: [
+						{ id: 'cut', label: 'Cut' },
+						{ id: 'fade', label: 'Fade' },
+					],
+					default: 'cut',
+				},
+				{
+					id: 'time',
+					type: 'textinput',
+					label: 'Transition Time (ms)',
+					default: "0",
+					required: true,
+					useVariables: true,
+					isVisible: (options) => { return options.transition === 'fade'; }
+				},
+			],
+            callback: async (ev, context) => {
+				const overlay = await context.parseVariablesInString(ev.options.overlay.toString()) as string;
+				const transition = ev.options.transition as string;
+				const varTimeString = await context.parseVariablesInString(ev.options.time.toString());
+				const time = Number(varTimeString);
+
+				const _bank = ev.options.bank as buttonPressOverlayType;
+				let bank;
+				let switchto;
+
+				if (_bank) {
+					switch(_bank) {
+						case buttonPressOverlayType.OVERLAY_1:
+							bank = '1';
+							break;
+						case buttonPressOverlayType.OVERLAY_2:
+							bank = '2';
+							break;
+						case buttonPressOverlayType.OVERLAY_3:
+							bank = '3';
+							break;
+						case buttonPressOverlayType.OVERLAY_4:
+							bank = '4';
+							break;
+						case buttonPressOverlayType.OVERLAY_5:
+							bank = '5';
+							break;
+						case buttonPressOverlayType.OVERLAY_6:
+							bank = '6';
+							break;
+						case buttonPressOverlayType.OVERLAY_7:
+							bank = '7';
+							break;
+						default:
+							bank = null;
+					}
+				}
+
+				if (bank) {
+					await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/name`, overlay);
+					await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/file_path`, overlay);
+
+					if (transition === 'fade' && time) {
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/transition`, 'fade');
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/transition_time`, time.toString());
+					} else {
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/transition`, 'cut');
+					}
+				} else {
+					ConsoleLog(instance, 'Bank not found', LogLevel.ERROR);
+				}
+            },
+
+			subscribe: (feedback) => {
+				if (!instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setOverlay';
+
+					instance.actions[feedback.id] = type;
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+				}
+			},
+
+			unsubscribe: (feedback) => {
+				if (instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setOverlay';
+					delete instance.actions[feedback.id];
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+				}
+			}
+        },
 	})
 }

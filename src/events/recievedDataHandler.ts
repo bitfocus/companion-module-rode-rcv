@@ -18,7 +18,7 @@ const parserOptions = {
 };
 
 const xmlParser = new XMLParser(parserOptions);
-const debug = false;
+const debug = true;
 
 
 /**
@@ -28,7 +28,7 @@ const debug = false;
  */
 export async function handleIncomingData(instance: RCVInstance, command: string, args: any) {
 
-	if (debug && command !== '/meters/values' ) {
+	if (debug && command !== '/meters/values' && !command.includes('/videoIn') ) {
 		ConsoleLog(instance, `Received message: ${command}, args: ${JSON.stringify(args)}`, LogLevel.INFO, false);
 	}
 	
@@ -336,7 +336,8 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 						mediaSources[index] = { 
 							name: source['@_name'],
 							pressMode: source['@_press_mode'] as pressMode,
-							mediaType: getMediaType(source['@_file_path'])
+							mediaType: getMediaType(source['@_file_path']),
+							filename: source['@_file_path']
 						};
 			
 						ConsoleLog(instance, `${index} Media source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
