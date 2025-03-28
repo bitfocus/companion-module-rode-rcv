@@ -32,6 +32,14 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		ConsoleLog(instance, `Received message: ${command}, args: ${JSON.stringify(args)}`, LogLevel.INFO, false);
 	}
 	
+	// Handle record enabled
+	if (command === '/show/recordEnabled') {
+		controllerVariables.recordEnabled = !!args[0];
+		instance.checkFeedbacks(FeedbackId.is_recording);
+		ConsoleLog(instance, `RecordEnabled flag set to ${controllerVariables.recordEnabled}`, LogLevel.DEBUG, false);
+		return;
+	}
+	
 	//Handle show dump
 	if (command === '/show') {
 
