@@ -80,6 +80,7 @@ export const controllerVariables = {
 	hdmi_A_output: routingSources.MULTIVIEW,
 	hdmi_B_output: routingSources.MULTIVIEW,
 	uvc_1_output: routingSources.MULTIVIEW,
+	recordEnabled: false,
 };
 
 export const allButtonPressTypes = [

@@ -19,6 +19,7 @@ export enum FeedbackId {
 	overlays_state = 'overlays_state',
 	is_streaming = 'is_streaming',
 	is_recording = 'is_recording',
+	is_record_enabled = 'is_record_enabled',
 	audio_sources = 'audio_sources',
 	auto_switching = 'auto_switching',
 	logo = 'logo',
@@ -719,6 +720,20 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					}
 				}
                 
+            }
+        },
+		[FeedbackId.is_record_enabled]: {
+            name: 'Record Enabled State',
+            type: 'boolean',
+            description: 'Feedback based on Record Enabled state (/show/recordEnabled)',
+            defaultStyle: {
+                color: combineRgb(255, 255, 255),
+                bgcolor: combineRgb(0, 255, 0),
+            },
+            showInvert: true,
+            options: [],
+            callback: async (feedback, context) => {
+                return controllerVariables.recordEnabled === true
             }
         },
 		[FeedbackId.audio_sources]: {
