@@ -97,6 +97,9 @@ export function createClient(instance: RCVInstance, ipAddress: string, port: num
 				try {
 					// Parse the OSC message using the complete message buffer
 					const parsedPacket = osc.readPacket(message, { metadata: true });
+	
+					if ('address' in parsedPacket && parsedPacket.address.startsWith('/')) {
+
 						
 						//Handle blob data more accurately
 						if (parsedPacket.args && parsedPacket.args.length === 1 && parsedPacket.args[0].type === 'b') {
