@@ -91,7 +91,8 @@ All feedbacks are booleans, which allows them to be used in triggers.
 	- Show Audio Meters for live mix channels.
 - **Visual Switcher**
 	- Show a visual representative of the main RCV buttons.
-
+- **Record Enabled State**
+    - Provides feedback on if the record button is enabled or not.
 
 ### Variables
 
@@ -106,6 +107,7 @@ All feedbacks are booleans, which allows them to be used in triggers.
 ##### Device Settings
 - `$(RCV:device_fanspeed)`
 - `$(RCV:frame_rate)`
+- `$(RCV:record_enabled)`
 
 ##### Input Sources
 - `$(RCV:input_1_name)`
