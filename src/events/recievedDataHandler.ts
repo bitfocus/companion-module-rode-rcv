@@ -96,6 +96,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				ConsoleLog(instance, `UVC Output 1 set to ${controllerVariables.uvc_1_output}`, LogLevel.DEBUG, true);
 			}
 
+			if (parsed.RcvShow && parsed.RcvShow.NDISender && parsed.RcvShow.NDISender.outputType) {
+				controllerVariables.ndi_1_output = parsed.RcvShow.NDISender.outputType;
+				ConsoleLog(instance, `NDI Output 1 set to ${controllerVariables.ndi_1_output}`, LogLevel.DEBUG, true);
+			}
+
 			//Hande Framerate
 			if (parsed.RcvShow && parsed.RcvShow['@_frameRate']) {
 
@@ -291,28 +296,40 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			}
 
 			//Setup Sources
-			if (parsed.RcvShow && parsed.RcvShow.VideoSources) {
-				const _videoSources = parsed.RcvShow.VideoSources.VideoSource;
+			if (parsed.RcvShow && parsed.RcvShow.VideoInputs) {
+				const _videoSources = parsed.RcvShow.VideoInputs;
 			
 				if (Array.isArray(_videoSources)) {
 					// Handle as an array
 					_videoSources.forEach((source, index) => {
 						videoSources[index] = { 
-							name: source['@_name'],
-							source: source['@_source']
+							name: source['name'],
+							source: source['source']
 						};
 			
-						ConsoleLog(instance, `${index} Video source (${source['@_name']}) updated with source type ${source['@_source']}.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 1] ${index} Video source (${source['name']}) updated with source type ${source['source']}.`, LogLevel.DEBUG, false);
 					});
 				} else {
 					// Handle as an object
 					Object.entries(_videoSources).forEach(([index, source]) => {
-						videoSources[index] = { 
-							name: source['@_name'],
-							source: source['@_source']
+						if (typeof index !== 'string') {
+							console.warn('Skipping entry with invalid index:', index, source);
+							return;
+						}
+
+						let numericIndex: number;
+						if (index.startsWith('value')) {
+							numericIndex = parseInt(index.substring(5), 10);
+						} else {
+							numericIndex = parseInt(index, 10);
+						}
+
+						videoSources[numericIndex] = { 
+							name: source['name'],
+							source: source['source']
 						};
 			
-						ConsoleLog(instance, `${index} Video source (${source['@_name']}) updated with source type ${source['@_source']}.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 2] ${numericIndex} Video source (${source['name']}) updated with source type ${source['source']}.`, LogLevel.DEBUG, false);
 					});
 				}
 
@@ -340,7 +357,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 							filename: source['@_file_path']
 						};
 			
-						ConsoleLog(instance, `${index} Media source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 1] ${index} Media source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				} else {
 					// Handle as an object
@@ -349,7 +366,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 							name: source['@_name']
 						};
 			
-						ConsoleLog(instance, `${index} Media source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 2] ${index} Media source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				}
 		
@@ -374,7 +391,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 							name: source['@_name']
 						};
 			
-						ConsoleLog(instance, `${index} Scene source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 1] ${index} Scene source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				} else {
 					// Handle as an object
@@ -383,7 +400,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 							name: source['@_name']
 						};
 			
-						ConsoleLog(instance, `${index} Scene source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 2] ${index} Scene source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				}
 				
@@ -398,28 +415,38 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				});
 			}			
 
-			if (parsed.RcvShow && parsed.RcvShow.OverlayFiles) {
-				const _overlaySources = parsed.RcvShow.OverlayFiles.File;
-			
-				console.log('Overlay Sources', _overlaySources);
+			if (parsed.RcvShow && parsed.RcvShow.Overlays) {
+				const _overlaySources = parsed.RcvShow.Overlays;
 			
 				if (Array.isArray(_overlaySources)) {
 					// Handle as an array
 					_overlaySources.forEach((source, index) => {
 						overlaySources[index] = { 
-							name: source['@_name']
+							name: source['name']
 						};
 			
-						ConsoleLog(instance, `${index} Overlay source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 1] ${index} Overlay source (${source['name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				} else {
 					// Handle as an object
 					Object.entries(_overlaySources).forEach(([index, source]) => {
-						overlaySources[index] = { 
-							name: source['@_name']
+						if (typeof index !== 'string') {
+							console.warn('Skipping entry with invalid index:', index, source);
+							return;
+						}
+						
+						let numericIndex: number;
+						if (index.startsWith('value')) {
+							numericIndex = parseInt(index.substring(5), 10);
+						} else {
+							numericIndex = parseInt(index, 10);
+						}
+
+						overlaySources[numericIndex] = { 
+							name: source['name']
 						};
 			
-						ConsoleLog(instance, `${index} Overlay source (${source['@_name']}) updated.`, LogLevel.DEBUG, false);
+						ConsoleLog(instance, `[XML 2] ${numericIndex} Overlay source (${source['name']}) updated.`, LogLevel.DEBUG, false);
 					});
 				}
 
@@ -1623,6 +1650,18 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		ConsoleLog(instance, `UVC Output ${output} set to ${args[0]}`, LogLevel.DEBUG, true);
+		return;
+	}
+
+	if (command.includes('/show/ndisender')) {
+		const key = command.split('/');
+		const output = key[3];
+
+		if (output === "outputType") {
+			controllerVariables.ndi_1_output = args[0];
+		}
+
+		ConsoleLog(instance, `NDI1 Output 1 set to ${args[0]}`, LogLevel.DEBUG, true);
 		return;
 	}
 

@@ -1,6 +1,6 @@
 {
   "name": "rode-rcv",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -15,7 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@companion-module/base": "^1.11.3",
+    "@companion-module/base": "^1.12.1",
     "@tsconfig/node18": "^18.2.4",
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.7.3",
@@ -27,7 +27,7 @@
     "typescript": "^5.6.2"
   },
   "devDependencies": {
-    "@companion-module/tools": "^2.1.1",
+    "@companion-module/tools": "^2.3.0",
     "nodemon": "^3.1.7",
     "ts-node": "^10.9.2"
   }

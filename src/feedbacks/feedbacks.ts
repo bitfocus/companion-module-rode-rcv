@@ -1146,6 +1146,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					choices: [
 						{ id: 'none', label: 'None' },
 						{ id: 'chroma', label: 'Chroma' },
+						{ id: 'luma', label: 'Luma' },
 					],
 					default: 'none',
 				},
@@ -1159,7 +1160,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: keyingCol.BLUE, label: 'Blue' },
 					],
 					default: 'any',
-					isVisible: (options) => { return options.keying_type !== 'none'; }
+					isVisible: (options) => { return options.keying_type === 'chroma'; }
 				}
 			],
             callback: async (feedback, context) => {
@@ -1171,7 +1172,6 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
-
 
 					if (button.keyingMode === keying_type && button.keyingCol === keying_col || (button.keyingMode === keying_type && keying_col === 'any')) {
 						return true;
@@ -1202,11 +1202,12 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'outputA', label: 'HDMI A' },
 						{ id: 'outputB', label: 'HDMI B' },
 						{ id: 'outputUVC1', label: 'USB 1' },
+						{ id: 'outputNDI1', label: 'NDI 1' },
 					],
 					default: 'outputA',
 				},
 				{
-					id: 'source',
+					id: 'source1',
 					type: 'dropdown',
 					label: 'Source',
 					choices: [
@@ -1221,48 +1222,78 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'camera6', label: 'Camera 6' },
 					],
 					default: 'multi',
+					isVisible: (options) => { return options.output !== 'outputNDI1' },
+				},
+				{
+					id: 'source2',
+					type: 'dropdown',
+					label: 'Source',
+					choices: [
+						{ id: 'off', label: 'Off' },
+						{ id: 'program', label: 'Program' },
+						{ id: 'preview', label: 'Preview' },
+						{ id: 'multi', label: 'Multiview' },
+						{ id: 'camera1', label: 'Camera 1' },
+						{ id: 'camera2', label: 'Camera 2' },
+						{ id: 'camera3', label: 'Camera 3' },
+						{ id: 'camera4', label: 'Camera 4' },
+						{ id: 'camera5', label: 'Camera 5' },
+						{ id: 'camera6', label: 'Camera 6' },
+					],
+					default: 'multi',
+					isVisible: (options) => { return options.output === 'outputNDI1' },
 				}
 			],
 
 			learn: (ev) => {
 				const output = ev.options.output as routingOutputs;
-				let source;
+				let source1;
+				let source2;
 
 				if (output === undefined) {
 					return undefined;
 				}
 
 				if (output === routingOutputs.HDMI_A) {
-					source = controllerVariables.hdmi_A_output;
+					source1 = controllerVariables.hdmi_A_output;
 
 				} else if (output === routingOutputs.HDMI_B) {
-					source = controllerVariables.hdmi_B_output;
+					source1 = controllerVariables.hdmi_B_output;
 					
 				} else if (output === routingOutputs.UVC_1) {
-					source = controllerVariables.uvc_1_output;
+					source1 = controllerVariables.uvc_1_output;
+					
+				} else if (output === routingOutputs.NDI_1) {
+					source2 = controllerVariables.ndi_1_output;
 					
 				}
 
 				return {
 					...ev.options,
-					source: source.toString(),
+					source1: source1.toString(),
+					source2: source2.toString()
 				}
 			
 			},
             callback: async (feedback, context) => {
 				const output = feedback.options.output as routingOutputs;
-				const source = feedback.options.source as routingSources;
+				const source1 = feedback.options.source1 as routingSources;
+				const source2 = feedback.options.source2 as routingSources;
 
 				if (output === routingOutputs.HDMI_A) {
-					if (controllerVariables.hdmi_A_output === source) {
+					if (controllerVariables.hdmi_A_output === source1) {
 						return true;
 					}
 				} else if (output === routingOutputs.HDMI_B) {
-					if (controllerVariables.hdmi_B_output === source) {
+					if (controllerVariables.hdmi_B_output === source1) {
 						return true;
 					}
 				} else if (output === routingOutputs.UVC_1) {
-					if (controllerVariables.uvc_1_output === source) {
+					if (controllerVariables.uvc_1_output === source1) {
+						return true;
+					}
+				} else if (output === routingOutputs.NDI_1) {
+					if (controllerVariables.ndi_1_output === source2) {
 						return true;
 					}
 				}

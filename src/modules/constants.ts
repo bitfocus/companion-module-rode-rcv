@@ -80,6 +80,7 @@ export const controllerVariables = {
 	hdmi_A_output: routingSources.MULTIVIEW,
 	hdmi_B_output: routingSources.MULTIVIEW,
 	uvc_1_output: routingSources.MULTIVIEW,
+	ndi_1_output: routingSources.OFF
 };
 
 export const allButtonPressTypes = [
@@ -175,7 +176,10 @@ export const submixList = {
 	[SubmixChannels.USB1_CHAT]: {id: 7, title: 'USB Chat', icon: 'imgs/new/key_images/audio_sources/usb1chat', path: '/submix/usb1chat'},
 	[SubmixChannels.USB2]: {id: 8, title: 'USB 2', icon: 'imgs/new/key_images/audio_sources/usb4', path: '/submix/usbsecondary'},
 	[SubmixChannels.USB4]: {id: 9, title: 'USB 4', icon: 'imgs/new/key_images/audio_sources/usb4', path: '/submix/usb4Hosted'},
-	[SubmixChannels.USB5]: {id: 10, title: 'USB 5', icon: 'imgs/new/key_images/audio_sources/usb5', path: '/submix/usb2Hosted'}
+	[SubmixChannels.USB5]: {id: 10, title: 'USB 5', icon: 'imgs/new/key_images/audio_sources/usb5', path: '/submix/usb2Hosted'},
+	[SubmixChannels.HDMI_A]: {id: 11, title: 'HDMI A', icon: 'imgs/new/key_images/audio_sources/hdmiA', path: '/submix/hdmiOutputA'},
+	[SubmixChannels.HDMI_B]: {id: 12, title: 'HDMI B', icon: 'imgs/new/key_images/audio_sources/hdmiB', path: '/submix/hdmiOutputB'},
+	[SubmixChannels.NDI]: {id: 13, title: 'NDI', icon: 'imgs/new/key_images/audio_sources/ndi', path: '/submix/ndi'},
 }
 
 export const mixList = {
@@ -189,14 +193,18 @@ export const mixList = {
 	[SubmixChannels.USB1_CHAT]: {id: 7, title: 'USB Chat', icon: 'imgs/new/key_images/audio_sources/usb1chat'},
 	[SubmixChannels.USB2]: {id: 8, title: 'USB 2', icon: 'imgs/new/key_images/audio_sources/usb4'},
 	[SubmixChannels.USB4]: {id: 9, title: 'USB 4', icon: 'imgs/new/key_images/audio_sources/usb4'},
-	[SubmixChannels.USB5]: {id: 10, title: 'USB 5', icon: 'imgs/new/key_images/audio_sources/usb5'}
+	[SubmixChannels.USB5]: {id: 10, title: 'USB 5', icon: 'imgs/new/key_images/audio_sources/usb5'},
+	[SubmixChannels.HDMI_A]: {id: 11, title: 'HDMI A', icon: 'imgs/new/key_images/audio_sources/hdmiA'},
+	[SubmixChannels.HDMI_B]: {id: 12, title: 'HDMI B', icon: 'imgs/new/key_images/audio_sources/hdmiB'},
+	[SubmixChannels.NDI]: {id: 13, title: 'NDI', icon: 'imgs/new/key_images/audio_sources/ndi'},
 }
 
-export const channelList: { [key in audioChannels]?: { title: string, icon: string, mute_icon: string, layout_icon: string, layout_mute_icon: string, minGain: number, maxGain: number } } = {
+export const channelList: { [key in audioChannels]?: { title: string, icon: string, mute_icon: string, scmute_icon: string, layout_icon: string, layout_mute_icon: string, minGain: number, maxGain: number } } = {
 	[audioChannels.COMBO1]: {
 		title: 'Combo 1',
 		icon: 'imgs/new/key_images/audio_sources/combo1', 
 		mute_icon: 'imgs/new/key_images/audio_sources/combo1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/combo1_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/combo1_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/combo1_layout_mute',
 		minGain: 0,
@@ -206,6 +214,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Combo 2',
 		icon: 'imgs/new/key_images/audio_sources/combo2', 
 		mute_icon: 'imgs/new/key_images/audio_sources/combo2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/combo2_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/combo2_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/combo2_layout_mute',
 		minGain: 0,
@@ -215,6 +224,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Combo Linked',
 		icon: 'imgs/new/key_images/audio_sources/combo1_2', 
 		mute_icon: 'imgs/new/key_images/audio_sources/combo1_2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/combo1_2_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/combo1_2_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/combo1_2_layout_mute',
 		minGain: 0,
@@ -224,6 +234,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Wireless 1',
 		icon: 'imgs/new/key_images/audio_sources/wireless1', 
 		mute_icon: 'imgs/new/key_images/audio_sources/wireless1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/wireless1_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/wireless1_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/wireless1_layout_mute',
 		minGain: -24,
@@ -233,6 +244,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Wireless 2',
 		icon: 'imgs/new/key_images/audio_sources/wireless2', 
 		mute_icon: 'imgs/new/key_images/audio_sources/wireless2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/wireless2_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/wireless2_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/wireless2_layout_mute',
 		minGain: -24,
@@ -242,6 +254,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Video Clips',
 		icon: 'imgs/new/key_images/audio_sources/videoclips', 
 		mute_icon: 'imgs/new/key_images/audio_sources/videoclips_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/videoclips_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/videoclips_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/videoclips_layout_mute',
 		minGain: -24,
@@ -251,6 +264,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Sounds',
 		icon: 'imgs/new/key_images/audio_sources/sounds', 
 		mute_icon: 'imgs/new/key_images/audio_sources/sounds_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/sounds_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/sounds_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/sounds_layout_mute',
 		minGain: -24,
@@ -260,6 +274,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'HDMI 1',
 		icon: 'imgs/new/key_images/audio_sources/HDMI1', 
 		mute_icon: 'imgs/new/key_images/audio_sources/HDMI1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/HDMI1_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/HDMI1_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/HDMI1_layout_mute',
 		minGain: -24,
@@ -269,6 +284,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'HDMI 2',
 		icon: 'imgs/new/key_images/audio_sources/HDMI2', 
 		mute_icon: 'imgs/new/key_images/audio_sources/HDMI2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/HDMI2_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/HDMI2_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/HDMI2_layout_mute',
 		minGain: -24,
@@ -278,6 +294,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'HDMI 3',
 		icon: 'imgs/new/key_images/audio_sources/HDMI3', 
 		mute_icon: 'imgs/new/key_images/audio_sources/HDMI3_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/HDMI3_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/HDMI3_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/HDMI3_layout_mute',
 		minGain: -24,
@@ -287,6 +304,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'HDMI 4',
 		icon: 'imgs/new/key_images/audio_sources/HDMI4', 
 		mute_icon: 'imgs/new/key_images/audio_sources/HDMI4_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/HDMI4_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/HDMI4_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/HDMI4_layout_mute',
 		minGain: -24,
@@ -296,6 +314,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'Bluetooth',
 		icon: 'imgs/new/key_images/audio_sources/bluetooth', 
 		mute_icon: 'imgs/new/key_images/audio_sources/bluetooth_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/bluetooth_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/bluetooth_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/bluetooth_layout_mute',
 		minGain: -24,
@@ -305,6 +324,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'USB Main',
 		icon: 'imgs/new/key_images/audio_sources/usb1', 
 		mute_icon: 'imgs/new/key_images/audio_sources/usb1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/usb1_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/usb1_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/usb1_layout_mute',
 		minGain: -24,
@@ -314,6 +334,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'USB Chat',
 		icon: 'imgs/new/key_images/audio_sources/chat1', 
 		mute_icon: 'imgs/new/key_images/audio_sources/chat1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/chat1_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/chat1_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/chat1_layout_mute',
 		minGain: -24,
@@ -323,6 +344,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'USB 2',
 		icon: 'imgs/new/key_images/audio_sources/usb2', 
 		mute_icon: 'imgs/new/key_images/audio_sources/usb2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/usb2_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/usb2_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/usb2_layout_mute',
 		minGain: -24,
@@ -332,6 +354,7 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'USB 4',
 		icon: 'imgs/new/key_images/audio_sources/usb4', 
 		mute_icon: 'imgs/new/key_images/audio_sources/usb4_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/usb4_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/usb4_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/usb4_layout_mute',
 		minGain: -24,
@@ -341,8 +364,49 @@ export const channelList: { [key in audioChannels]?: { title: string, icon: stri
 		title: 'USB 5',
 		icon: 'imgs/new/key_images/audio_sources/usb5', 
 		mute_icon: 'imgs/new/key_images/audio_sources/usb5_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/usb5_scmute',
 		layout_icon: 'imgs/new/key_images/audio_sources/usb5_layout',
 		layout_mute_icon: 'imgs/new/key_images/audio_sources/usb5_layout_mute',
+		minGain: -24,
+		maxGain: 0
+	},
+	[audioChannels.NETWORK1]: {
+		title: 'NETWORK 1',
+		icon: 'imgs/new/key_images/audio_sources/network1', 
+		mute_icon: 'imgs/new/key_images/audio_sources/network1_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/network1_scmute',
+		layout_icon: 'imgs/new/key_images/audio_sources/network1_layout',
+		layout_mute_icon: 'imgs/new/key_images/audio_sources/network1_layout_mute',
+		minGain: -24,
+		maxGain: 0
+	},
+	[audioChannels.NETWORK2]: {
+		title: 'NETWORK 2',
+		icon: 'imgs/new/key_images/audio_sources/network2', 
+		mute_icon: 'imgs/new/key_images/audio_sources/network2_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/network2_scmute',
+		layout_icon: 'imgs/new/key_images/audio_sources/network2_layout',
+		layout_mute_icon: 'imgs/new/key_images/audio_sources/network2_layout_mute',
+		minGain: -24,
+		maxGain: 0
+	},
+	[audioChannels.NETWORK3]: {
+		title: 'NETWORK 3',
+		icon: 'imgs/new/key_images/audio_sources/network3', 
+		mute_icon: 'imgs/new/key_images/audio_sources/network3_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/network3_scmute',
+		layout_icon: 'imgs/new/key_images/audio_sources/network3_layout',
+		layout_mute_icon: 'imgs/new/key_images/audio_sources/network3_layout_mute',
+		minGain: -24,
+		maxGain: 0
+	},
+	[audioChannels.NETWORK4]: {
+		title: 'NETWORK 4',
+		icon: 'imgs/new/key_images/audio_sources/network4', 
+		mute_icon: 'imgs/new/key_images/audio_sources/network4_mute',
+		scmute_icon: 'imgs/new/key_images/audio_sources/network4_scmute',
+		layout_icon: 'imgs/new/key_images/audio_sources/network4_layout',
+		layout_mute_icon: 'imgs/new/key_images/audio_sources/network4_layout_mute',
 		minGain: -24,
 		maxGain: 0
 	},

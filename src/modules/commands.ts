@@ -117,6 +117,7 @@ export const commands = {
 	HDMI_A_OUTPUT: ["/show/hdmiOut/2"],
 	HDMI_B_OUTPUT: ["/show/hdmiOut/1"],
 	UVC_1_OUTPUT: ["/show/usbOut/1"],
+	NDI_1_OUTPUT: ["/show/ndisender/outputType"],
 
 	METERS: ["/meters/masks"],
 };

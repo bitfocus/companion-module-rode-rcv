@@ -128,14 +128,19 @@ export enum MixerChannels {
 	USB2 = 'value8',
 	USB3 = 'value9',
 	USB4 = 'value10',
-	USB5 = 'value11',
+	HDMI_A = 'value11',
+	HDMI_B = 'value12',
+	NDI = 'value13'
 }
 
+//Outputs
 export enum SubmixChannels {
 	LIVE = 'live',
 	PHONES1 = 'phones1',
 	PHONES2 = 'phones2',
 	MONITOR = 'monitor',
+	HDMI_A = 'hdmiOutputA',
+	HDMI_B = 'hdmiOutputB',
 	RECORDING = 'recording',
 	BLUETOOTH = 'bluetooth',
 	USB1 = 'usb1',
@@ -144,6 +149,7 @@ export enum SubmixChannels {
 	USB3 = 'usb3Hosted',
 	USB4 = 'usb4Hosted',
 	USB5 = 'usb2Hosted',
+	NDI = 'ndi',
 }
 
 export enum MetersSubmix {
@@ -158,10 +164,13 @@ export enum MetersSubmix {
     USB2 = 8,
     USB3 = 9,
     USB4 = 10,
-    USB5 = 11, // Obsolete
-    NumTypes = 12
+    HDMI_A = 11,
+	HDMI_B = 12,
+	NDI = 13,
+    NumTypes = 14
 }
 
+//Inputs
 export enum audioChannels {
 	COMBO1 = 'value0',
 	COMBO2 = 'value1',
@@ -181,6 +190,10 @@ export enum audioChannels {
 	USB4 = 'value23',
 	USB5 = 'value24',
 	//IPHONE = 'value25',
+	NETWORK1 = 'value29',
+	NETWORK2 = 'value30',
+	NETWORK3 = 'value31',
+	NETWORK4 = 'value32'
 }
 
 export enum MetersChannel {
@@ -211,7 +224,11 @@ export enum MetersChannel {
     USB5 = 24,
     IPHONE = 25,
     USB3 = 26, // Obsolete
-    NumSources = 27,
+	NETWORK1 = 29,
+	NETWORK2 = 30,
+	NETWORK3 = 31,
+	NETWORK4 = 32,
+    NumSources = 31,
     None = -1
 }
 
@@ -238,6 +255,7 @@ export enum streamEncoderDisplay {
 export enum keyingMode {
 	NONE = 'none',
 	CHROMA = 'chroma',
+	LUMA = 'luma'
 }
 
 export enum keyingCol {
@@ -255,10 +273,12 @@ export enum keyingColStatic {
 export enum routingOutputs {
 	HDMI_A = 'outputA',
 	HDMI_B = 'outputB',
-	UVC_1 =  'outputUVC1'
+	UVC_1 =  'outputUVC1',
+	NDI_1 = 'outputNDI1'
 }
 
 export enum routingSources {
+	OFF = 'off',
 	PROGRAM = 'program',
 	PREVIEW = 'preview',
 	MULTIVIEW = 'multi',

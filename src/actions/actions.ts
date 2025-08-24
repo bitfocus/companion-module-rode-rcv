@@ -1456,6 +1456,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					label: 'Key Source',
 					choices: [
 						{ id: 'chroma', label: 'Chroma' },
+						{ id: 'luma', label: 'Luma' },
 					],
 					default: 'chroma',
 					isVisible: (options) => { return options.action !== 'disable'; }
@@ -1477,7 +1478,7 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'blue', label: 'Blue' },
 					],
 					default: 'green',
-					isVisible: (options) => { return options.keying_type !== 'none' && options.action !== 'disable'; }
+					isVisible: (options) => { return options.keying_type === 'chroma' && options.action !== 'disable'; }
 				}
 			],
             callback: async (ev, context) => {
@@ -1496,14 +1497,17 @@ export function UpdateActions(instance: RCVInstance): void {
 						if (keying_type === 'chroma') {
 							await sendOSCCommand(instance, `/videoIn/${button.id+1}/key_mode`, keyingMode.CHROMA);
 							buttonList[value].keyingMode = keyingMode.CHROMA;
-						}
-	
-						if (keying_col === 'green') {
-							await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.GREEN);
-							buttonList[value].keyingCol = keyingCol.GREEN;
-						} if (keying_col === 'blue') {
-							await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.BLUE);
-							buttonList[value].keyingCol = keyingCol.BLUE;
+						
+							if (keying_col === 'green') {
+								await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.GREEN);
+								buttonList[value].keyingCol = keyingCol.GREEN;
+							} if (keying_col === 'blue') {
+								await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.BLUE);
+								buttonList[value].keyingCol = keyingCol.BLUE;
+							}
+						} else if (keying_type === 'luma') {
+							await sendOSCCommand(instance, `/videoIn/${button.id+1}/key_mode`, keyingMode.LUMA);
+							buttonList[value].keyingMode = keyingMode.LUMA;
 						}
 
 						if (keying_source) {
@@ -1569,11 +1573,12 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'outputA', label: 'HDMI A' },
 						{ id: 'outputB', label: 'HDMI B' },
 						{ id: 'outputUVC1', label: 'USB 1' },
+						{ id: 'outputNDI1', label: 'NDI' },
 					],
 					default: 'outputA',
 				},
 				{
-					id: 'source',
+					id: 'source1',
 					type: 'dropdown',
 					label: 'Source',
 					choices: [
@@ -1588,46 +1593,74 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'camera6', label: 'Camera 6' },
 					],
 					default: 'multi',
+					isVisible: (options) => { return options.output !== 'outputNDI1' },
+				},
+				{
+					id: 'source2',
+					type: 'dropdown',
+					label: 'Source',
+					choices: [
+						{ id: 'off', label: 'Off' },
+						{ id: 'program', label: 'Program' },
+						{ id: 'preview', label: 'Preview' },
+						{ id: 'multi', label: 'Multiview' },
+						{ id: 'camera1', label: 'Camera 1' },
+						{ id: 'camera2', label: 'Camera 2' },
+						{ id: 'camera3', label: 'Camera 3' },
+						{ id: 'camera4', label: 'Camera 4' },
+						{ id: 'camera5', label: 'Camera 5' },
+						{ id: 'camera6', label: 'Camera 6' },
+					],
+					default: 'multi',
+					isVisible: (options) => { return options.output === 'outputNDI1' },
 				}
 			],
 
 			learn: (ev) => {
 				const output = ev.options.output as routingOutputs;
-				let source;
+				let source1;
+				let source2;
 
 				if (output === undefined) {
 					return undefined;
 				}
 
 				if (output === routingOutputs.HDMI_A) {
-					source = controllerVariables.hdmi_A_output;
+					source1 = controllerVariables.hdmi_A_output;
 
 				} else if (output === routingOutputs.HDMI_B) {
-					source = controllerVariables.hdmi_B_output;
+					source1 = controllerVariables.hdmi_B_output;
 					
 				} else if (output === routingOutputs.UVC_1) {
-					source = controllerVariables.uvc_1_output;
+					source1 = controllerVariables.uvc_1_output;
+					
+				} else if (output === routingOutputs.NDI_1) {
+					source2 = controllerVariables.ndi_1_output;
 					
 				}
 
 				return {
 					...ev.options,
-					source: source.toString(),
+					source1: source1.toString(),
+					source2: source2.toString()
 				}
 			
 			},
             callback: async (ev, context) => {
 				const output = ev.options.output as routingOutputs;
-				const source = ev.options.source as routingSources;
+				const source1 = ev.options.source1 as routingSources;
+				const source2 = ev.options.source2 as routingSources;
 
 				if (output === routingOutputs.HDMI_A) {
-					await sendOSCCommand(instance, commands.HDMI_A_OUTPUT[0].toString(), source);
+					await sendOSCCommand(instance, commands.HDMI_A_OUTPUT[0].toString(), source1);
 
 				} else if (output === routingOutputs.HDMI_B) {
-					await sendOSCCommand(instance, commands.HDMI_B_OUTPUT[0].toString(), source);
+					await sendOSCCommand(instance, commands.HDMI_B_OUTPUT[0].toString(), source1);
 
 				} else if (output === routingOutputs.UVC_1) {
-					await sendOSCCommand(instance, commands.UVC_1_OUTPUT[0].toString(), source);
+					await sendOSCCommand(instance, commands.UVC_1_OUTPUT[0].toString(), source1);
+				} else if (output === routingOutputs.NDI_1) {
+					await sendOSCCommand(instance, commands.NDI_1_OUTPUT[0].toString(), source2);
 				}
 
             },
