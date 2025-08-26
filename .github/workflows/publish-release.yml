@@ -7,57 +7,61 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: write   # needed for creating releases
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node-version: [22.x]
-
+      matrix: { node-version: [22.x] }
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: yarn
 
-      - name: Install dependencies
+      - name: Install deps
         run: yarn install --frozen-lockfile
 
-      - name: Build the project
+      - name: Build
         run: tsc
 
-      - name: Extract version from manifest
+      - name: Extract version from package.json
         id: get_version
-        run: echo "version=$(jq -r '.version' package.json)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Pack Companion plugin
         run: |
           version=${{ steps.get_version.outputs.version }}
           yarn companion-module-build
-          mkdir temp_pkg
-          mv ./pkg/* temp_pkg/
-          rm -rf pkg/
+          mkdir temp_pkg && mv pkg/* temp_pkg/ && rm -rf pkg/
           (cd temp_pkg && zip -r "../companion-module-rode-rcv_${version}.zip" .)
           rm -rf temp_pkg
 
+      # Always generate a commits.txt so body_path never fails
+      - name: Generate release notes (commits.txt)
+        run: |
+          prev=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$prev" ]; then
+            git log "$prev"..HEAD --pretty=format:"- %s" > commits.txt || true
+          fi
+          # Fallback if empty or prev missing
+          if [ ! -s commits.txt ]; then
+            echo "- Changes for v${{ steps.get_version.outputs.version }}" > commits.txt
+          fi
+          ls -l commits.txt && head -n 5 commits.txt || true
+
       - name: Create GitHub release & upload asset
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ steps.get_version.outputs.version }}     # <- force the tag
+          target_commitish: ${{ github.sha }}                     # <- tie to this commit
           name: RCV Companion ${{ steps.get_version.outputs.version }}
           body_path: commits.txt
           files: companion-module-rode-rcv_${{ steps.get_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate commit messages since previous tag (optional)
-        if: always()
-        run: |
-          prev=$(git describe --tags --abbrev=0 HEAD^ || echo "")
-          if [ -n "$prev" ]; then git log "$prev"..HEAD --pretty=format:"- %s" > commits.txt; else echo "- Initial release" > commits.txt; fi
