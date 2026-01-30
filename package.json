@@ -27,7 +27,7 @@
     "typescript": "^5.6.2"
   },
   "devDependencies": {
-    "@companion-module/tools": "^2.3.0",
+    "@companion-module/tools": "^2.6.1",
     "nodemon": "^3.1.7",
     "ts-node": "^10.9.2"
   }
