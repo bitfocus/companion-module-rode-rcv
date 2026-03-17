@@ -1,8 +1,8 @@
-import { Regex, type SomeCompanionConfigField } from '@companion-module/base'
+import { Regex, type SomeCompanionConfigField } from '@companion-module/base';
 
 export interface ModuleConfig {
-	ipAddress: string
-	enableComs: boolean
+	ipAddress: string;
+	enableComs: boolean;
 }
 
 export function GetConfigFields(): SomeCompanionConfigField[] {
@@ -22,6 +22,6 @@ export function GetConfigFields(): SomeCompanionConfigField[] {
 			label: 'Enable Communications',
 			width: 6,
 			default: false,
-		}
-	]
+		},
+	];
 }

@@ -1,15 +1,58 @@
-import { combineRgb, CompanionFeedbackDefinition, CompanionFeedbackDefinitions, CompanionOptionValues } from '@companion-module/base'
-import type { RCVInstance } from '../index.js'
-import { buttonList, channelList, Col_Black, Col_Green, Col_LightBlue, Col_LightPurple, Col_Magenta, Col_PGM, Col_Purple, Col_PVW, Col_White, controllerVariables, mediaSources, mixerChannels, mixList, overlaySources, rcvPhysicalButtons, sceneSources, videoSources } from '../modules/constants.js';
-import { buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, keyingCol, keyingMode, LogLevel, routingOutputs, routingSources } from '../modules/enums.js';
-import { audioChannelsChoices, audioMixesChoices, controlButtonChoices, evaluateComparison, filterButtonListByEnum, inputButtonChoices, mediaButtonChoices, overlayButtonChoices, sceneButtonChoices } from '../helpers/commonHelpers.js';
+import {
+	combineRgb,
+	CompanionFeedbackDefinition,
+	CompanionFeedbackDefinitions,
+	CompanionOptionValues,
+} from '@companion-module/base';
+import type { RCVInstance } from '../index.js';
+import {
+	buttonList,
+	Col_Black,
+	Col_Green,
+	Col_LightBlue,
+	Col_LightPurple,
+	Col_Magenta,
+	Col_PGM,
+	Col_Purple,
+	Col_PVW,
+	Col_White,
+	controllerVariables,
+	mediaSources,
+	mixerChannels,
+	mixList,
+	overlaySources,
+	rcvPhysicalButtons,
+	sceneSources,
+	videoSources,
+} from '../modules/constants.js';
+import {
+	buttonPressControlType,
+	buttonPressMediaType,
+	buttonPressOverlayType,
+	buttonStates,
+	keyingCol,
+	buttonPressSceneType,
+	LogLevel,
+	routingOutputs,
+	routingSources,
+	buttonPressInputsType,
+	RCVModel,
+} from '../modules/enums.js';
+import {
+	evaluateComparison,
+	getaudioChannelsChoices,
+	getaudioMixesChoices,
+	getButtonChoices,
+	getroutingInputChoices,
+	getroutingOutputChoices,
+} from '../helpers/commonHelpers.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { floatToDb } from '../helpers/decibelHelper.js';
 import { ChannelData, PresetOptionsBoxes_Custom } from '../modules/interfaces.js';
 import { companionMeter, meterLevelToPercentage } from '../helpers/metersHelper.js';
 import { graphics, presets } from 'companion-module-utils/dist/index.js';
 import { rect, stackImage } from 'companion-module-utils/dist/graphics.js';
-import { PresetOptionsBoxes } from 'companion-module-utils/dist/presets.js';
+import { PresetBox, PresetOptionsBoxes } from 'companion-module-utils/dist/presets.js';
 
 export enum FeedbackId {
 	control_state = 'control_state',
@@ -25,28 +68,28 @@ export enum FeedbackId {
 	keying = 'keying',
 	routing = 'routing',
 	meters = 'meters',
-	visualSwitcher = 'visualSwitcher'
+	visualSwitcher = 'visualSwitcher',
+	switching_mode = 'switching_mode',
 }
-
 
 export function UpdateFeedbacks(instance: RCVInstance): void {
 	let feedbackList = {
 		[FeedbackId.control_state]: {
 			name: 'Control State',
-            type: 'boolean',
-            description: 'Feedback based on control button status',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on control button status',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Control',
-					choices: controlButtonChoices,
-					default: controlButtonChoices[0]?.id
+					choices: getButtonChoices(buttonPressControlType),
+					default: getButtonChoices(buttonPressControlType)[0]?.id,
 				},
 				{
 					id: 'action_1',
@@ -62,17 +105,19 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					isVisible: (options) => {
 						const control = options.control;
 						return (
-						  control !== 'buttonAuto' &&
-						  control !== 'buttonCut' &&
-						  control !== 'buttonRecord' &&
-						  control !== 'buttonStream' &&
-						  control !== 'buttonOverlay' &&
-						  control !== 'buttonInspect' &&
-						  control !== 'buttonMedia' &&
-						  control !== 'buttonMultiSource' &&
-						  control !== 'buttonKey'
+							control !== 'buttonAuto' &&
+							control !== 'buttonCut' &&
+							control !== 'buttonRecord' &&
+							control !== 'buttonStream' &&
+							control !== 'buttonOverlay' &&
+							control !== 'buttonInspect' &&
+							control !== 'buttonMedia' &&
+							control !== 'buttonMultiSource' &&
+							control !== 'buttonKey'
 						);
-					}
+					},
+					isVisibleExpression:
+						"$(options:control) !== 'buttonAuto' && $(options:control) !== 'buttonCut' && $(options:control) !== 'buttonRecord' && $(options:control) !== 'buttonStream' && $(options:control) !== 'buttonOverlay' && $(options:control) !== 'buttonInspect' && $(options:control) !== 'buttonMedia' && $(options:control) !== 'buttonMultiSource' && $(options:control) !== 'buttonKey'",
 				},
 				{
 					id: 'action_2',
@@ -96,18 +141,20 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 							control === 'buttonMultiSource' ||
 							control === 'buttonKey'
 						);
-					}
-				}
+					},
+					isVisibleExpression:
+						"$(options:control) === 'buttonAuto' || $(options:control) === 'buttonCut' || $(options:control) === 'buttonRecord' || $(options:control) === 'buttonStream' || $(options:control) === 'buttonOverlay' || $(options:control) === 'buttonInspect' || $(options:control) === 'buttonMedia' || $(options:control) === 'buttonMultiSource' || $(options:control) === 'buttonKey'",
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.control as buttonPressControlType;
 
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
 					const state = button.state;
 
-					if (value !== buttonPressControlType.BUTTON_AUTO &&
+					if (
+						value !== buttonPressControlType.BUTTON_AUTO &&
 						value !== buttonPressControlType.BUTTON_CUT &&
 						value !== buttonPressControlType.BUTTON_RECORD &&
 						value !== buttonPressControlType.BUTTON_STREAM &&
@@ -115,47 +162,45 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						value !== buttonPressControlType.BUTTON_INSPECT &&
 						value !== buttonPressControlType.BUTTON_MEDIA &&
 						value !== buttonPressControlType.BUTTON_MULTISOURCE &&
-						value !== buttonPressControlType.BUTTON_KEY) {
+						value !== buttonPressControlType.BUTTON_KEY
+					) {
+						const action = feedback.options.action_1;
 
-							const action = feedback.options.action_1;
-
-							//0 - Invalid, 1 - Idle, 2 - Active, 3 - Preview
-							switch(state) {
-								case 0:
-									if (action === buttonStates.UNAVAILABLE) {
-										return true;
-									} else {
-										return false;
-									}
-								case 1:
-									if (action === buttonStates.IDLE) {
-										return true;
-									} else {
-										return false;
-									}
-								case 2:
-									if (action === buttonStates.PGM) {
-										return true;
-									} else {
-										return false;
-									}
-								case 3:
-									if (action === buttonStates.PVW) {
-										return true;
-									} else {
-										return false;
-									}
-
-								default:
+						//0 - Invalid, 1 - Idle, 2 - Active, 3 - Preview
+						switch (state) {
+							case 0:
+								if (action === buttonStates.UNAVAILABLE) {
+									return true;
+								} else {
 									return false;
-							}
-							
-					} else {
+								}
+							case 1:
+								if (action === buttonStates.IDLE) {
+									return true;
+								} else {
+									return false;
+								}
+							case 2:
+								if (action === buttonStates.PGM) {
+									return true;
+								} else {
+									return false;
+								}
+							case 3:
+								if (action === buttonStates.PVW) {
+									return true;
+								} else {
+									return false;
+								}
 
+							default:
+								return false;
+						}
+					} else {
 						const action = feedback.options.action_2;
 
 						//0 - Invalid, 1 - Idle, 2 - Active, 3 - Preview
-						switch(state) {
+						switch (state) {
 							case 0:
 							case 1:
 							case 3:
@@ -174,38 +219,42 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								return false;
 						}
 					}
-					
-
 				}
 
-                return false;
-            }
+				return false;
+			},
 		},
 		[FeedbackId.input_state]: {
 			name: 'Input State',
-            type: 'boolean',
-            description: 'Feedback based on Input state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on Input state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Input',
-					choices: inputButtonChoices,
-					default: inputButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressInputsType),
+					default: getButtonChoices(buttonPressInputsType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Input (Must be a numeric value between 1 - 6)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
@@ -224,9 +273,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: buttonStates.UNAVAILABLE, label: 'Unavailable' },
 					],
 					default: buttonStates.PGM,
-				}
+				},
 			],
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				let value;
 
 				if (feedback.options.variable) {
@@ -234,12 +283,16 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 6) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 6. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 6. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `input${_value}`;
-
 				} else {
 					value = feedback.options.control as buttonPressInputsType;
 				}
@@ -250,11 +303,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const button = buttonList[value];
 					const state = videoSources[button.id]?.state;
 
-					//ConsoleLog(instance, `Input ${button.title} State: ${state} Action: ${action}`, LogLevel.DEBUG, false);
+					ConsoleLog(instance, `[X] Input ${button.title} State: ${state} Action: ${action}`, LogLevel.DEBUG, false);
 
 					//0 - Idle, 1 - Active, 2 - Preview, 3 - Invalid
-					switch(state) {
-						
+					switch (state) {
 						case 0:
 							if (action === buttonStates.IDLE) {
 								return true;
@@ -287,41 +339,40 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								return false;
 							}
 					}
-
 				}
-
-                if (action === buttonStates.UNAVAILABLE) {
-					return true;
-				} else {
-					return false;
-				}
-            }
+			},
 		},
 		[FeedbackId.scenes_state]: {
 			name: 'Scene State',
-            type: 'boolean',
-            description: 'Feedback based on Scene state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on Scene state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Scene',
-					choices: sceneButtonChoices,
-					default: sceneButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressSceneType),
+					default: getButtonChoices(buttonPressSceneType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Scene (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
@@ -340,9 +391,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: buttonStates.UNAVAILABLE, label: 'Unavailable' },
 					],
 					default: buttonStates.PGM,
-				}
+				},
 			],
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				let value;
 
 				if (feedback.options.variable) {
@@ -350,12 +401,16 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `scene${_value}`;
-
 				} else {
 					value = feedback.options.control as buttonPressSceneType;
 				}
@@ -366,9 +421,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const button = buttonList[value];
 					const state = sceneSources[button.id]?.state;
 
+					//ConsoleLog(instance, `[X] Scene ${button.title} State: ${state} Action: ${action}`, LogLevel.DEBUG, false);
+
 					//0 - Idle, 1 - Active, 2 - Preview, 3 - Invalid
-					switch(state) {
-						
+					switch (state) {
 						case 0:
 							if (action === buttonStates.IDLE) {
 								return true;
@@ -401,41 +457,40 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								return false;
 							}
 					}
-
 				}
-
-                if (action === buttonStates.UNAVAILABLE) {
-					return true;
-				} else {
-					return false;
-				}
-            }
+			},
 		},
 		[FeedbackId.media_state]: {
 			name: 'Media State',
-            type: 'boolean',
-            description: 'Feedback based on Media state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on Media state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Media',
-					choices: mediaButtonChoices,
-					default: mediaButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressMediaType),
+					default: getButtonChoices(buttonPressMediaType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Media (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
@@ -454,9 +509,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: buttonStates.UNAVAILABLE, label: 'Unavailable' },
 					],
 					default: buttonStates.PGM,
-				}
+				},
 			],
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				let value;
 
 				if (feedback.options.variable) {
@@ -464,12 +519,16 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `media${_value}`;
-
 				} else {
 					value = feedback.options.control as buttonPressMediaType;
 				}
@@ -481,8 +540,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const state = mediaSources[button.id]?.state;
 
 					//0 - Idle, 1 - Active, 2 - Preview, 3 - Invalid
-					switch(state) {
-						
+					switch (state) {
 						case 0:
 							if (action === buttonStates.IDLE) {
 								return true;
@@ -515,41 +573,40 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								return false;
 							}
 					}
-
 				}
-
-                if (action === buttonStates.UNAVAILABLE) {
-					return true;
-				} else {
-					return false;
-				}
-            }
+			},
 		},
 		[FeedbackId.overlays_state]: {
 			name: 'Overlay State',
-            type: 'boolean',
-            description: 'Feedback based on Overlay state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on Overlay state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Overlay',
-					choices: overlayButtonChoices,
-					default: overlayButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressOverlayType),
+					default: getButtonChoices(buttonPressOverlayType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Overlay (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
@@ -568,9 +625,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: buttonStates.UNAVAILABLE, label: 'Unavailable' },
 					],
 					default: buttonStates.PGM,
-				}
+				},
 			],
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				let value;
 
 				if (feedback.options.variable) {
@@ -578,12 +635,16 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `overlay${_value}`;
-
 				} else {
 					value = feedback.options.control as buttonPressOverlayType;
 				}
@@ -595,8 +656,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					const state = overlaySources[button.id]?.state;
 
 					//0 - Idle, 1 - Active, 2 - Preview, 3 - Invalid
-					switch(state) {
-						
+					switch (state) {
 						case 0:
 							if (action === buttonStates.IDLE) {
 								return true;
@@ -629,26 +689,19 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								return false;
 							}
 					}
-
 				}
-
-                if (action === buttonStates.UNAVAILABLE) {
-					return true;
-				} else {
-					return false;
-				}
-            }
+			},
 		},
 		[FeedbackId.is_streaming]: {
-            name: 'Streaming State',
-            type: 'boolean',
-            description: 'Feedback based on Streaming state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Streaming State',
+			type: 'boolean',
+			description: 'Feedback based on Streaming state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -657,11 +710,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'state', label: 'Is Streaming' },
 						{ id: 'ready', label: 'Stream Available' },
 					],
-					default: 'state'
-				}
+					default: 'state',
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.action;
 
 				if (value === 'state') {
@@ -677,19 +729,18 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return false;
 					}
 				}
-                
-            }
-        },
+			},
+		},
 		[FeedbackId.is_recording]: {
-            name: 'Recording State',
-            type: 'boolean',
-            description: 'Feedback based on Recording state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Recording State',
+			type: 'boolean',
+			description: 'Feedback based on Recording state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -698,11 +749,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'state', label: 'Is Recording' },
 						{ id: 'ready', label: 'Record Available' },
 					],
-					default: 'state'
-				}
+					default: 'state',
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.action;
 
 				if (value === 'state') {
@@ -718,32 +768,31 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return false;
 					}
 				}
-                
-            }
-        },
+			},
+		},
 		[FeedbackId.audio_sources]: {
-            name: 'Audio Source Status',
-            type: 'boolean',
-            description: 'Feedback based on Audio Sources',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Audio Source Status',
+			type: 'boolean',
+			description: 'Feedback based on Audio Sources',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'channel',
 					type: 'dropdown',
 					label: 'Channel',
-					choices: audioChannelsChoices,
-					default: audioChannelsChoices[0]?.id
+					choices: getaudioChannelsChoices(),
+					default: getaudioChannelsChoices()[0]?.id,
 				},
 				{
 					id: 'submix',
 					type: 'dropdown',
 					label: 'Mix',
-					choices: audioMixesChoices,
-					default: audioMixesChoices[0]?.id
+					choices: getaudioMixesChoices(),
+					default: getaudioMixesChoices()[0]?.id,
 				},
 				{
 					id: 'action',
@@ -756,14 +805,17 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'mute', label: 'Mute' },
 						{ id: 'scmute', label: 'Scene Mute' },
 					],
-					default: 'volume'
+					default: 'volume',
 				},
 				{
 					id: 'important-line',
 					type: 'static-text',
 					label: '',
 					value: 'Current Volume only reads the Live Mix audio level.',
-					isVisible: (options) => { return (options.action === 'live'); }
+					isVisible: (options) => {
+						return options.action === 'live';
+					},
+					isVisibleExpression: "$(options:action) === 'live'",
 				},
 				{
 					id: 'comparison',
@@ -778,7 +830,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'notequal', label: '!=' },
 					],
 					default: 'equal',
-					isVisible: (options) => { return (options.action !== 'mute' && options.action !== 'scmute'); }
+					isVisible: (options) => {
+						return options.action !== 'mute' && options.action !== 'scmute';
+					},
+					isVisibleExpression: "$(options:action) !== 'mute' && $(options:action) !== 'scmute'",
 				},
 				{
 					id: 'volume_value',
@@ -790,7 +845,11 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.variable === false && (options.action === 'volume' || options.action === 'live'); }
+					isVisible: (options) => {
+						return options.variable === false && (options.action === 'volume' || options.action === 'live');
+					},
+					isVisibleExpression:
+						"$(options:variable) === false && ($(options:action) === 'volume' || $(options:action) === 'live')",
 				},
 				{
 					id: 'gain_value',
@@ -802,48 +861,66 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.variable === false && options.action === 'gain'; }
+					isVisible: (options) => {
+						return options.variable === false && options.action === 'gain';
+					},
+					isVisibleExpression: "$(options:variable) === false && $(options:action) === 'gain'",
 				},
 				{
 					id: 'volume_value_var',
 					type: 'textinput',
 					label: 'Volume Value (Must be a numeric value in dB between -60 and 6)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return (options.variable === true && (options.action === 'volume' || options.action === 'live')); }
+					isVisible: (options) => {
+						return options.variable === true && (options.action === 'volume' || options.action === 'live');
+					},
+					isVisibleExpression:
+						"$(options:variable) === true && ($(options:action) === 'volume' || $(options:action) === 'live')",
 				},
 				{
 					id: 'gain_value_var',
 					type: 'textinput',
 					label: 'Gain Value (Must be a numeric value in dB between -24 and 76)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true && options.action === 'gain'; }
+					isVisible: (options) => {
+						return options.variable === true && options.action === 'gain';
+					},
+					isVisibleExpression: "$(options:variable) === true && $(options:action) === 'gain'",
 				},
 				{
 					id: 'muted_value',
 					type: 'checkbox',
 					label: 'Is Muted',
 					default: true,
-					isVisible: (options) => { return options.action === 'mute'; }
+					isVisible: (options) => {
+						return options.action === 'mute';
+					},
+					isVisibleExpression: "$(options:action) === 'mute'",
 				},
 				{
 					id: 'scmuted_value',
 					type: 'checkbox',
 					label: 'Is Scene Muted',
 					default: true,
-					isVisible: (options) => { return options.action === 'scmute'; }
+					isVisible: (options) => {
+						return options.action === 'scmute';
+					},
+					isVisibleExpression: "$(options:action) === 'scmute'",
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-					isVisible: (options) => { return (options.action !== 'mute' && options.action !== 'scmute'); }
-				}
-				
+					isVisible: (options) => {
+						return options.action !== 'mute' && options.action !== 'scmute';
+					},
+					isVisibleExpression: "$(options:action) !== 'mute' && $(options:action) !== 'scmute'",
+				},
 			],
 			learn: (ev) => {
 				const action = ev.options.action;
@@ -853,7 +930,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 				if (mixerChannels.hasOwnProperty(_channel)) {
 					const mixer = mixerChannels[_channel];
 					const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]);
-					
+
 					if (action === 'gain') {
 						const currentGain = Number(mixer.gain);
 
@@ -864,7 +941,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							gain_value: currentGain,
-						}
+						};
 					} else if (action === 'volume') {
 						const currentLevel = mixer.submixes[mixList[_submix].id].level;
 						const outputLevel = floatToDb(currentLevel);
@@ -876,7 +953,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							volume_value: outputLevel,
-						}
+						};
 					} else if (action === 'mute') {
 						const muted = mixer.submixes[mixList[_submix].id].muted;
 
@@ -887,7 +964,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							muted_value: muted,
-						}
+						};
 					} else if (action === 'scmute') {
 						const scmuted = mixer.submixes[mixList[_submix].id].scene_mute;
 
@@ -898,7 +975,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							scmuted_value: scmuted,
-						}
+						};
 					} else if (action === 'live') {
 						if (!controllerVariables.returnLiveLevels) {
 							return false;
@@ -907,10 +984,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						const mixName = `value${mixerNo}`;
 						const meterData = controllerVariables.currentAudioLevels;
 
-
 						if (meterData && meterData.outputs.hasOwnProperty(mixerNo)) {
 							const meters = meterData.outputs[mixerNo] as ChannelData;
-							
+
 							const levelsL_db = floatToDb(meterLevelToPercentage(meters.left?.level || 0));
 							const levelsR_db = floatToDb(meterLevelToPercentage(meters.right?.level || 0));
 							const average_db = (levelsL_db + levelsR_db) / 2;
@@ -918,32 +994,30 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 							return {
 								...ev.options,
 								volume_value: average_db,
-							}
+							};
 						}
 
 						return undefined;
 					}
-
 				} else {
-					ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
+					//ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
+					return undefined;
 				}
 
 				return undefined;
-			
 			},
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				const _submix = feedback.options.submix as string;
 				const action = feedback.options.action;
 				const _channel = feedback.options.channel as string;
 
-                
 				if (mixerChannels.hasOwnProperty(_channel)) {
 					const mixer = mixerChannels[_channel];
 					const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]);
-					
+
 					if (action === 'gain') {
 						let checkValue = 0;
-						
+
 						if (feedback.options.variable === true) {
 							const varString = await context.parseVariablesInString(feedback.options.gain_value_var.toString());
 							let _checkValue = Number(varString);
@@ -969,10 +1043,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 
 						const comparisonResult = evaluateComparison(currentGain, checkValue, comparison);
 						return comparisonResult;
-
 					} else if (action === 'volume') {
 						let checkValue = 0;
-						
+
 						if (feedback.options.variable === true) {
 							const varString = await context.parseVariablesInString(feedback.options.volume_value_var.toString());
 							let _checkValue = Number(varString);
@@ -993,27 +1066,23 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 							checkValue = feedback.options.volume_value as number;
 						}
 
-
 						const comparison = feedback.options.comparison as string;
 						const currentLevel = mixer.submixes[mixList[_submix].id].level;
 
 						const outputLevel = floatToDb(currentLevel);
-						
+
 						const comparisonResult = evaluateComparison(outputLevel, checkValue, comparison);
 						return comparisonResult;
-
 					} else if (action === 'mute') {
 						const checkValue = feedback.options.muted_value as boolean;
 						const muted = mixer.submixes[mixList[_submix].id].muted;
 
 						return checkValue === muted;
-
 					} else if (action === 'scmute') {
 						const checkValue = feedback.options.scmuted_value as boolean;
 						const scmuted = mixer.submixes[mixList[_submix].id].scene_mute;
 
 						return checkValue === scmuted;
-
 					} else if (action === 'live') {
 						if (!controllerVariables.returnLiveLevels) {
 							return false;
@@ -1024,13 +1093,13 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 
 						if (meterData && meterData.outputs.hasOwnProperty(mixerNo)) {
 							const meters = meterData.outputs[mixerNo] as ChannelData;
-							
+
 							const levelsL_db = floatToDb(meterLevelToPercentage(meters.left?.level || 0));
 							const levelsR_db = floatToDb(meterLevelToPercentage(meters.right?.level || 0));
 							const average_db = (levelsL_db + levelsR_db) / 2;
 
 							let checkValue = 0;
-						
+
 							if (feedback.options.variable === true) {
 								const varString = await context.parseVariablesInString(feedback.options.volume_value_var.toString());
 								let _checkValue = Number(varString);
@@ -1052,30 +1121,29 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 							}
 
 							const comparison = feedback.options.comparison as string;
-							
+
 							const comparisonResult = evaluateComparison(average_db, checkValue, comparison);
 							return comparisonResult;
 						}
 
 						return false;
 					}
-
 				} else {
-					ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
+					//ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
 					return false;
 				}
-            }
-        },
+			},
+		},
 		[FeedbackId.auto_switching]: {
-            name: 'Auto Switching State',
-            type: 'boolean',
-            description: 'Feedback based on Auto Switching state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Auto Switching State',
+			type: 'boolean',
+			description: 'Feedback based on Auto Switching state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -1084,26 +1152,27 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'enabled', label: 'Enabled' },
 						{ id: 'disabled', label: 'Disabled' },
 					],
-					default: 'enabled'
-				}
+					default: 'enabled',
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.action;
-				return (value === 'enabled' && controllerVariables.autoswitchEnabled) || (value === 'disabled' && !controllerVariables.autoswitchEnabled);
-                
-            }
-        },
+				return (
+					(value === 'enabled' && controllerVariables.autoswitchEnabled) ||
+					(value === 'disabled' && !controllerVariables.autoswitchEnabled)
+				);
+			},
+		},
 		[FeedbackId.logo]: {
-            name: 'Logo State',
-            type: 'boolean',
-            description: 'Feedback based on Logo state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Logo State',
+			type: 'boolean',
+			description: 'Feedback based on Logo state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -1112,32 +1181,33 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'enabled', label: 'Enabled' },
 						{ id: 'disabled', label: 'Disabled' },
 					],
-					default: 'enabled'
-				}
+					default: 'enabled',
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.action;
-				return (value === 'enabled' && controllerVariables.logoEnabled) || (value === 'disabled' && !controllerVariables.logoEnabled);
-                
-            }
-        },
+				return (
+					(value === 'enabled' && controllerVariables.logoEnabled) ||
+					(value === 'disabled' && !controllerVariables.logoEnabled)
+				);
+			},
+		},
 		[FeedbackId.keying]: {
 			name: 'Keying Status',
-            type: 'boolean',
-            description: 'Feedback based on key status on input',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			type: 'boolean',
+			description: 'Feedback based on key status on input',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Input',
-					choices: inputButtonChoices,
-					default: inputButtonChoices[0]?.id
+					choices: getButtonChoices(buttonPressInputsType),
+					default: getButtonChoices(buttonPressInputsType)[0]?.id,
 				},
 				{
 					id: 'keying_type',
@@ -1160,89 +1230,71 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: keyingCol.BLUE, label: 'Blue' },
 					],
 					default: 'any',
-					isVisible: (options) => { return options.keying_type === 'chroma'; }
-				}
+					isVisible: (options) => {
+						return options.keying_type === 'chroma';
+					},
+					isVisibleExpression: "$(options:keying_type) === 'chroma'",
+				},
 			],
-            callback: async (feedback, context) => {
-
+			callback: async (feedback, context) => {
 				const value = feedback.options.control as buttonPressInputsType;
 				const keying_type = feedback.options.keying_type as string;
 				const keying_col = feedback.options.keying_col as string;
 
-
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
 
-					if (button.keyingMode === keying_type && button.keyingCol === keying_col || (button.keyingMode === keying_type && keying_col === 'any')) {
+					if (
+						(button.keyingMode === keying_type && button.keyingCol === keying_col) ||
+						(button.keyingMode === keying_type && keying_col === 'any')
+					) {
 						return true;
 					} else {
 						return false;
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid input button: ${value}`, LogLevel.ERROR, false);
 				}
-
-            }
+			},
 		},
 		[FeedbackId.routing]: {
-            name: 'Video Outputs',
+			name: 'Video Outputs',
 			type: 'boolean',
-            description: 'Feedback based on video output state',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            options: [
+			description: 'Feedback based on video output state',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			options: [
 				{
 					id: 'output',
 					type: 'dropdown',
 					label: 'Output',
-					choices: [
-						{ id: 'outputA', label: 'HDMI A' },
-						{ id: 'outputB', label: 'HDMI B' },
-						{ id: 'outputUVC1', label: 'USB 1' },
-						{ id: 'outputNDI1', label: 'NDI 1' },
-					],
+					choices: getroutingOutputChoices(),
 					default: 'outputA',
 				},
 				{
 					id: 'source1',
 					type: 'dropdown',
 					label: 'Source',
-					choices: [
-						{ id: 'program', label: 'Program' },
-						{ id: 'preview', label: 'Preview' },
-						{ id: 'multi', label: 'Multiview' },
-						{ id: 'camera1', label: 'Camera 1' },
-						{ id: 'camera2', label: 'Camera 2' },
-						{ id: 'camera3', label: 'Camera 3' },
-						{ id: 'camera4', label: 'Camera 4' },
-						{ id: 'camera5', label: 'Camera 5' },
-						{ id: 'camera6', label: 'Camera 6' },
-					],
+					choices: getroutingInputChoices(),
 					default: 'multi',
-					isVisible: (options) => { return options.output !== 'outputNDI1' },
+					isVisible: (options) => {
+						return options.output !== 'outputNDI1';
+					},
+					isVisibleExpression: "$(options:output) !== 'outputNDI1'",
 				},
 				{
 					id: 'source2',
 					type: 'dropdown',
 					label: 'Source',
-					choices: [
-						{ id: 'off', label: 'Off' },
-						{ id: 'program', label: 'Program' },
-						{ id: 'preview', label: 'Preview' },
-						{ id: 'multi', label: 'Multiview' },
-						{ id: 'camera1', label: 'Camera 1' },
-						{ id: 'camera2', label: 'Camera 2' },
-						{ id: 'camera3', label: 'Camera 3' },
-						{ id: 'camera4', label: 'Camera 4' },
-						{ id: 'camera5', label: 'Camera 5' },
-						{ id: 'camera6', label: 'Camera 6' },
-					],
+					choices: [{ id: 'off', label: 'Off' }, ...getroutingInputChoices()],
 					default: 'multi',
-					isVisible: (options) => { return options.output === 'outputNDI1' },
-				}
+					isVisible: (options) => {
+						return options.output === 'outputNDI1';
+					},
+					isVisibleExpression: "$(options:output) === 'outputNDI1'",
+				},
 			],
 
 			learn: (ev) => {
@@ -1256,26 +1308,21 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 
 				if (output === routingOutputs.HDMI_A) {
 					source1 = controllerVariables.hdmi_A_output;
-
 				} else if (output === routingOutputs.HDMI_B) {
 					source1 = controllerVariables.hdmi_B_output;
-					
 				} else if (output === routingOutputs.UVC_1) {
 					source1 = controllerVariables.uvc_1_output;
-					
 				} else if (output === routingOutputs.NDI_1) {
 					source2 = controllerVariables.ndi_1_output;
-					
 				}
 
 				return {
 					...ev.options,
 					source1: source1.toString(),
-					source2: source2.toString()
-				}
-			
+					source2: source2.toString(),
+				};
 			},
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				const output = feedback.options.output as routingOutputs;
 				const source1 = feedback.options.source1 as routingSources;
 				const source2 = feedback.options.source2 as routingSources;
@@ -1299,34 +1346,30 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 				}
 
 				return false;
-
-            }
-        },
+			},
+		},
 		[FeedbackId.meters]: {
-            name: 'Audio Meters',
-            type: 'advanced',
-            description: 'Show Audio Meters for live mix channels',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Audio Meters',
+			type: 'advanced',
+			description: 'Show Audio Meters for live mix channels',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'channel',
 					type: 'dropdown',
 					label: 'Channel',
-					choices: [
-						{ id: 'master', label: 'Master' },
-						...audioChannelsChoices
-					],
-					default: audioChannelsChoices[0]?.id
+					choices: [{ id: 'master', label: 'Master' }, ...getaudioChannelsChoices()],
+					default: getaudioChannelsChoices()[0]?.id,
 				},
 				{
 					id: 'important-line',
 					type: 'static-text',
 					label: '',
-					value: 'Meters are only available for Live Mix.'
+					value: 'Meters are only available for Live Mix.',
 				},
 				{
 					id: 'orientation',
@@ -1336,7 +1379,7 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'vertical', label: 'Vertical' },
 						{ id: 'horizontal', label: 'Horizontal' },
 					],
-					default: 'vertical'
+					default: 'vertical',
 				},
 				{
 					id: 'position',
@@ -1350,11 +1393,10 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'br', label: 'Bottom Right' },
 						{ id: 'bm', label: 'Bottom Middle' },
 					],
-					default: 'tr'
+					default: 'tr',
 				},
-				
 			],
-            callback: async (feedback, context) => {
+			callback: async (feedback, context) => {
 				const _channel = feedback.options.channel as string;
 				const orientation = feedback.options.orientation as 'horizontal' | 'vertical';
 				const position = feedback.options.position as 'tl' | 'tr' | 'tm' | 'bl' | 'br' | 'bm';
@@ -1362,73 +1404,80 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 				let meter1 = 0;
 				let meter2 = 0;
 
-				let meter = companionMeter({
-					width: feedback.image.width,
-					height: feedback.image.height,
-					meter1: 0,
-					meter2: 0,
-					muted: false
-				}, orientation, position);
+				let meter = companionMeter(
+					{
+						width: feedback.image.width,
+						height: feedback.image.height,
+						meter1: 0,
+						meter2: 0,
+						muted: false,
+					},
+					orientation,
+					position,
+				);
 
 				const meterData = controllerVariables.currentAudioLevels;
 
 				if (_channel === 'master') {
-
 					if (meterData && meterData.master) {
 						const master = meterData.master as ChannelData;
-						
+
 						meter1 = meterLevelToPercentage(master.left?.level || 0);
 						meter2 = meterLevelToPercentage(master.right?.level || 0);
 
-						meter = companionMeter({
-							width: feedback.image.width,
-							height: feedback.image.height,
-							meter1: meter1 * 100,
-							meter2: meter2 * 100,
-							muted: false
-						}, orientation, position);
-					}
-
-				} else {
-					if (mixerChannels.hasOwnProperty(_channel)) {
-						const mixer = mixerChannels[_channel];
-						const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]);
-	
-						if (meterData && meterData.outputs.hasOwnProperty(mixerNo)) {
-							const meters = meterData.outputs[mixerNo] as ChannelData;
-							
-							meter1 = meterLevelToPercentage(meters.left?.level || 0);
-							meter2 = meterLevelToPercentage(meters.right?.level || 0);
-	
-							meter = companionMeter({
+						meter = companionMeter(
+							{
 								width: feedback.image.width,
 								height: feedback.image.height,
 								meter1: meter1 * 100,
 								meter2: meter2 * 100,
-								muted: mixer.submixes[0].muted
-							}, orientation, position);
-			
+								muted: false,
+							},
+							orientation,
+							position,
+						);
+					}
+				} else {
+					if (mixerChannels.hasOwnProperty(_channel)) {
+						const mixer = mixerChannels[_channel];
+						const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]);
+
+						if (meterData && meterData.outputs.hasOwnProperty(mixerNo)) {
+							const meters = meterData.outputs[mixerNo] as ChannelData;
+
+							meter1 = meterLevelToPercentage(meters.left?.level || 0);
+							meter2 = meterLevelToPercentage(meters.right?.level || 0);
+
+							meter = companionMeter(
+								{
+									width: feedback.image.width,
+									height: feedback.image.height,
+									meter1: meter1 * 100,
+									meter2: meter2 * 100,
+									muted: mixer.submixes[0].muted,
+								},
+								orientation,
+								position,
+							);
 						}
-	
-						
 					}
 				}
 
 				return {
-					imageBuffer: meter
-				}
-            }
-        },
+					imageBuffer: meter,
+				};
+			},
+		},
 		[FeedbackId.visualSwitcher]: {
-            name: 'Visual Switcher',
-            type: 'advanced',
-            description: 'Show a visual representative of the main RCV buttons',
-            defaultStyle: {
-                color: combineRgb(255, 255, 255),
-                bgcolor: combineRgb(255, 0, 0),
-            },
-            showInvert: true,
-            options: [
+			name: 'Visual Switcher',
+			type: 'advanced',
+			description: 'Show a visual representative of the main RCV buttons',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
 				{
 					id: 'position',
 					type: 'dropdown',
@@ -1438,115 +1487,30 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 						{ id: 'middle', label: 'Middle' },
 						{ id: 'bottom', label: 'Bottom' },
 					],
-					default: 'top'
+					default: 'top',
 				},
-				
 			],
-            callback: async (feedback, context) => {
 
+			callback: async (feedback, context) => {
 				const position = feedback.options.position as 'top' | 'bottom' | 'middle';
+				const isRCVS = controllerVariables.model === RCVModel.RCVS || controllerVariables.model === RCVModel.RCVC;
 
-				const boxes_top = (options: PresetOptionsBoxes_Custom): Uint8Array => {
-					const boxOptions = [...options.boxes].slice(0, 7)
-					const boxArray: Uint8Array[] = []
-				  
-					boxOptions.forEach((boxOption, index) => {
-					  let offsetX = 0
-					  let offsetY = 0
-				  
-					  if (position === 'top' || position === 'bottom') {
-						offsetY = position === 'top' ? 2 : options.height - 24
-						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
-					  } else if (position === 'middle') {
-						offsetY = options.height / 2 - 10;
-						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
-					  }
-				  
-					  const box = rect({
-						width: options.width,
-						height: options.height,
-						offsetX,
-						offsetY,
-						color: boxOption.borderColor,
-						opacity: boxOption.borderOpacity,
-						fillColor: boxOption.fillColor,
-						fillOpacity: boxOption.fillOpacity,
-						rectHeight: 8,
-						rectWidth: 8,
-						strokeWidth: 1,
-					  })
-				  
-					  boxArray.push(box)
-					})
-				  
-					return stackImage(boxArray)
-				}
+				// Button IDs to render (IDs remain stable; we just omit some)
+				const topIds = isRCVS ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 7];
+				const bottomIds = isRCVS ? [8, 9, 10, 11, 14] : [8, 9, 10, 11, 12, 13, 14];
 
-				const boxes_bottom = (options: PresetOptionsBoxes_Custom): Uint8Array => {
-					const boxOptions = [...options.boxes].slice(0, 7)
-					const boxArray: Uint8Array[] = []
-				  
-					boxOptions.forEach((boxOption, index) => {
-					  let offsetX = 0
-					  let offsetY = 0
-				  
-					  if (position === 'top' || position === 'bottom') {
-						offsetY = position === 'top' ? 12 : options.height - 14
-						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
-					  } else if (position === 'middle') {
-						offsetY = options.height / 2;
-						offsetX = (options.width - boxOptions.length * 10) / 2 + index * 10
-					  }
-				  
-					  const box = rect({
-						width: options.width,
-						height: options.height,
-						offsetX,
-						offsetY,
-						color: boxOption.borderColor,
-						opacity: boxOption.borderOpacity,
-						fillColor: boxOption.fillColor,
-						fillOpacity: boxOption.fillOpacity,
-						rectHeight: 8,
-						rectWidth: 8,
-						strokeWidth: 1,
-					  })
-				  
-					  boxArray.push(box)
-					})
-				  
-					return stackImage(boxArray)
-				}
+				// Default all buttons to black
+				const button: Record<number, { col: number }> = Object.fromEntries(
+					Array.from({ length: 14 }, (_, i) => [i + 1, { col: Col_Black }]),
+				) as Record<number, { col: number }>;
 
-				const button: { [buttonId: number]: {col: number }} = {
-					1: { col: Col_Black },
-					2: { col: Col_Black },
-					3: { col: Col_Black },
-					4: { col: Col_Black },
-					5: { col: Col_Black },
-					6: { col: Col_Black },
-					7: { col: Col_Black },
-					8: { col: Col_Black },
-					9: { col: Col_Black },
-					10: { col: Col_Black },
-					11: { col: Col_Black },
-					12: { col: Col_Black },
-					13: { col: Col_Black },
-					14: { col: Col_Black }
-				};
-
+				// Apply physical button colours (fix: Object.entries keys are strings)
 				if (rcvPhysicalButtons) {
-					for (const [buttonId, col] of Object.entries(rcvPhysicalButtons)) {
-						switch(col) {
-							case 0:
-								button[buttonId] = { col: Col_Black };
-								break;
-							case 1:
-								button[buttonId] = { col: Col_Black };
-								break;
-							case 2:
-								button[buttonId] = { col: Col_Black };
-								break;
+					for (const [buttonIdStr, col] of Object.entries(rcvPhysicalButtons)) {
+						const buttonId = Number(buttonIdStr);
+						if (!Number.isFinite(buttonId)) continue;
+
+						switch (col) {
 							case 3:
 								button[buttonId] = { col: Col_White };
 								break;
@@ -1561,6 +1525,9 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 								break;
 							case 8:
 								button[buttonId] = { col: Col_LightBlue };
+								break;
+							case 11:
+								button[buttonId] = { col: Col_Green };
 								break;
 							case 10:
 								button[buttonId] = { col: Col_Green };
@@ -1578,45 +1545,126 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					}
 				}
 
-				const switch_top = boxes_top({
-					width: feedback.image.width,
-					height: feedback.image.height,
-					position: position,
-					boxes: [
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[1].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[2].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[3].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[4].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[5].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[6].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[7].col, fillOpacity: 255 }
-					]
+				// Build a 14-element PresetBox[] array (index 0 => button 1, index 13 => button 14)
+				const boxesAll: PresetBox[] = Array.from({ length: 14 }, (_, i) => {
+					const id = i + 1;
+					return {
+						borderColor: combineRgb(255, 255, 255),
+						borderOpacity: 255,
+						fillColor: button[id].col,
+						fillOpacity: 255,
+					};
 				});
 
-				const switch_bottom = boxes_bottom({
-					width: feedback.image.width,
-					height: feedback.image.height,
-					position: position,
-					boxes: [
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[8].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[9].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[10].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[11].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[12].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[13].col, fillOpacity: 255 },
-						{ borderColor: combineRgb(255, 255, 255), borderOpacity: 255, fillColor: button[14].col, fillOpacity: 255 },
-					]
-				});
+				// Render a centered row of N boxes, with your original Y rules
+				const drawRow = (row: 'top' | 'bottom', boxIds: number[]): Uint8Array => {
+					const boxArray: Uint8Array[] = [];
 
-				
+					const rectW = 8;
+					const rectH = 8;
+					const spacing = 2;
+					const step = rectW + spacing; // 10, matches your original math
+
+					const totalW = boxIds.length * step;
+					const startX = (feedback.image.width - totalW) / 2;
+
+					boxIds.forEach((buttonId, index) => {
+						// Convert buttonId (1..14) to array index (0..13)
+						const boxOption = boxesAll[buttonId - 1];
+
+						let offsetX = startX + index * step;
+						let offsetY = 0;
+
+						if (position === 'top' || position === 'bottom') {
+							if (row === 'top') {
+								offsetY = position === 'top' ? 2 : feedback.image.height - 24;
+							} else {
+								offsetY = position === 'top' ? 12 : feedback.image.height - 14;
+							}
+						} else {
+							// middle
+							if (row === 'top') {
+								offsetY = feedback.image.height / 2 - 10;
+							} else {
+								offsetY = feedback.image.height / 2;
+							}
+						}
+
+						const box = rect({
+							width: feedback.image.width,
+							height: feedback.image.height,
+							offsetX,
+							offsetY,
+							color: boxOption.borderColor,
+							opacity: boxOption.borderOpacity,
+							fillColor: boxOption.fillColor,
+							fillOpacity: boxOption.fillOpacity,
+							rectHeight: rectH,
+							rectWidth: rectW,
+							strokeWidth: 1,
+						});
+
+						boxArray.push(box);
+					});
+
+					return stackImage(boxArray);
+				};
+
+				const switch_top = drawRow('top', topIds);
+				const switch_bottom = drawRow('bottom', bottomIds);
 
 				const visualSwitch = graphics.stackImage([switch_top, switch_bottom]);
-			
-				return {
-					imageBuffer: visualSwitch
+
+				return { imageBuffer: visualSwitch };
+			},
+		},
+		[FeedbackId.switching_mode]: {
+			name: 'Switching Mode',
+			type: 'boolean',
+			description: 'Feedback based on Switching Mode',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				bgcolor: combineRgb(255, 0, 0),
+			},
+			showInvert: true,
+			options: [
+				{
+					id: 'action',
+					type: 'dropdown',
+					label: 'Action',
+					choices: [
+						{ id: 'instant', label: 'Instant' },
+						{ id: 'studioLeft', label: 'Studio' },
+					],
+					default: 'instant',
+				},
+			],
+			learn: (ev) => {
+				let action;
+
+				if (controllerVariables.studioMode) {
+					action = 'studioLeft';
+				} else {
+					action = 'instant';
 				}
-            }
-        },
+
+				if (!action) {
+					return undefined;
+				}
+
+				return {
+					...ev.options,
+					action: action.toString(),
+				};
+			},
+			callback: async (feedback, context) => {
+				const value = feedback.options.action;
+				return (
+					(value === 'instant' && !controllerVariables.studioMode) ||
+					(value === 'studioLeft' && controllerVariables.studioMode)
+				);
+			},
+		},
 	};
 
 	instance.setFeedbackDefinitions(feedbackList as CompanionFeedbackDefinitions);

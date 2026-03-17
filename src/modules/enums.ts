@@ -4,7 +4,14 @@ export enum coloursList {
 	YELLOW = '#FFC400',
 	GREEN = '#00FF84',
 	BLUE = '#00C7FF',
-	GREY = '#4F4F4F'
+	GREY = '#4F4F4F',
+}
+
+export enum RCVModel {
+	UNKNOWN = -1,
+	RCV = 0,
+	RCVS = 1,
+	RCVC = 2,
 }
 
 export enum RCVSourceModes {
@@ -13,7 +20,7 @@ export enum RCVSourceModes {
 	MULTISOURCE = 'multiSourceMenu',
 	INSPECT = 'inspectMenu',
 	KEYFILL = 'keyFillMenu',
-	UNKNOWN = 'unknown'
+	UNKNOWN = 'unknown',
 }
 
 export enum buttonStates {
@@ -22,7 +29,7 @@ export enum buttonStates {
 	IDLE = 'idle',
 	UNAVAILABLE = 'unavailable',
 	ACTIVE = 'active',
-	INACTIVE = 'inactive'
+	INACTIVE = 'inactive',
 }
 
 export enum buttonPressControlType {
@@ -48,7 +55,7 @@ export enum buttonPressControlType {
 	BUTTON_OVERLAY = 'buttonOverlay',
 	BUTTON_MULTISOURCE = 'buttonMultiSource',
 	BUTTON_KEY = 'buttonKey',
-	BUTTON_INSPECT = 'buttonInspect'
+	BUTTON_INSPECT = 'buttonInspect',
 }
 
 export enum buttonPressInputsType {
@@ -94,7 +101,7 @@ export enum buttonPressOverlayType {
 export enum transtionCategory {
 	FADE = 'fade',
 	DIP = 'dip',
-	WIPE = 'wipe'
+	WIPE = 'wipe',
 }
 
 export enum transitionType {
@@ -130,7 +137,7 @@ export enum MixerChannels {
 	USB4 = 'value10',
 	HDMI_A = 'value11',
 	HDMI_B = 'value12',
-	NDI = 'value13'
+	NDI = 'value13',
 }
 
 //Outputs
@@ -153,21 +160,21 @@ export enum SubmixChannels {
 }
 
 export enum MetersSubmix {
-    Live = 0,
-    PHONES1 = 1,
-    PHONES2 = 2,
-    MONITOR = 3,
-    Recording = 4,
-    RECORDING = 5,
-    USB1 = 6,
-    USB1_CHAT =  7,
-    USB2 = 8,
-    USB3 = 9,
-    USB4 = 10,
-    HDMI_A = 11,
+	Live = 0,
+	PHONES1 = 1,
+	PHONES2 = 2,
+	MONITOR = 3,
+	Recording = 4,
+	RECORDING = 5,
+	USB1 = 6,
+	USB1_CHAT = 7,
+	USB2 = 8,
+	USB3 = 9,
+	USB4 = 10,
+	HDMI_A = 11,
 	HDMI_B = 12,
 	NDI = 13,
-    NumTypes = 14
+	NumTypes = 14,
 }
 
 //Inputs
@@ -177,104 +184,148 @@ export enum audioChannels {
 	COMBO_LINKED = 'value2',
 	WIRELESS1 = 'value3',
 	WIRELESS2 = 'value4',
-	VIDEOCLIPS = 'value5',
+	MEDIAPLAYER = 'value5',
 	SOUNDS = 'value6',
+	HDMI1L = 'value7',
+	HDMI1R = 'value8',
 	HDMI1 = 'value9',
+	HDMI2L = 'value10',
+	HDMI2R = 'value11',
 	HDMI2 = 'value12',
+	HDMI3L = 'value13',
+	HDMI3R = 'value14',
 	HDMI3 = 'value15',
+	HDMI4L = 'value16',
+	HDMI4R = 'value17',
 	HDMI4 = 'value18',
 	BLUETOOTH = 'value19',
 	USB1 = 'value20',
-	USB1CHAT = 'value21',
-	USB2 = 'value22',
-	USB4 = 'value23',
-	USB5 = 'value24',
-	//IPHONE = 'value25',
-	NETWORK1 = 'value29',
-	NETWORK2 = 'value30',
-	NETWORK3 = 'value31',
-	NETWORK4 = 'value32'
+	USB1Chat = 'value21',
+	USBSecondary = 'value22',
+	UsbAudioHosting3 = 'value23',
+	UsbAudioHosting4 = 'value24',
+	UsbAudioHosting3L = 'value25',
+	UsbAudioHosting3R = 'value26',
+	UsbAudioHosting4L = 'value27',
+	UsbAudioHosting4R = 'value28',
+	NDI1 = 'value29',
+	NDI2 = 'value30',
+	NDI3 = 'value31',
+	NDI4 = 'value32',
+	RCSyncCombo1 = 'value33',
+	RCSyncCombo2 = 'value34',
+	RCSyncCombo3 = 'value35',
+	RCSyncCombo4 = 'value36',
+	RCSyncCombo5 = 'value37',
+	RCSyncCombo6 = 'value38',
+	RCSyncCombo7 = 'value39',
+	RCSyncUSB2Main = 'value40',
+	RCSyncBluetooth1 = 'value41',
+	RCSyncSounds = 'value42',
+	RCSyncCloud1 = 'value43',
+	RCSyncCloud2 = 'value44',
+	RCSyncCloud3 = 'value45',
+	RCSyncWireless1 = 'value46',
+	RCSyncWireless2 = 'value47',
 }
 
 export enum MetersChannel {
-    COMBO1 = 0,
-    COMBO2 = 1,
-    COMBO_LINKED = 2,
-    WIRELESS1 = 3,
-    WIRELESS2 = 4,
-    VIDEOCLIPS = 5,
-    SOUNDS = 6,
-    HDMI1L = 7,
-    HDMI1R = 8,
-    HDMI1 = 9,
-    HDMI2L = 10,
-    HDMI2R = 11,
-    HDMI2 = 12,
-    HDMI3L = 13,
-    HDMI3R = 14,
-    HDMI3 = 15,
-    HDMI4L = 16,
-    HDMI4R = 17,
-    HDMI4 = 18,
-    BLUETOOTH = 19,
-    USB1 = 20,
-    USB1CHAT = 21,
-    USB2 = 22,
-    USB4 = 23,
-    USB5 = 24,
-    IPHONE = 25,
-    USB3 = 26, // Obsolete
-	NETWORK1 = 29,
-	NETWORK2 = 30,
-	NETWORK3 = 31,
-	NETWORK4 = 32,
-    NumSources = 31,
-    None = -1
+	COMBO1 = 0,
+	COMBO2 = 1,
+	COMBO_LINKED = 2,
+	WIRELESS1 = 3,
+	WIRELESS2 = 4,
+	MEDIAPLAYER = 5,
+	SOUNDS = 6,
+	HDMI1L = 7,
+	HDMI1R = 8,
+	HDMI1 = 9,
+	HDMI2L = 10,
+	HDMI2R = 11,
+	HDMI2 = 12,
+	HDMI3L = 13,
+	HDMI3R = 14,
+	HDMI3 = 15,
+	HDMI4L = 16,
+	HDMI4R = 17,
+	HDMI4 = 18,
+	BLUETOOTH = 19,
+	USB1 = 20,
+	USB1Chat = 21,
+	USBSecondary = 22,
+	UsbAudioHosting3 = 23,
+	UsbAudioHosting4 = 24,
+	UsbAudioHosting3L = 25,
+	UsbAudioHosting3R = 26,
+	UsbAudioHosting4L = 27,
+	UsbAudioHosting4R = 28,
+	NDI1 = 29,
+	NDI2 = 30,
+	NDI3 = 31,
+	NDI4 = 32,
+	NumRcvSources = 32,
+	RCSyncCombo1 = 33,
+	RCSyncCombo2 = 34,
+	RCSyncCombo3 = 35,
+	RCSyncCombo4 = 36,
+	RCSyncCombo5 = 37,
+	RCSyncCombo6 = 38,
+	RCSyncCombo7 = 39,
+	RCSyncUSB2Main = 40,
+	RCSyncBluetooth1 = 41,
+	RCSyncSounds = 42,
+	RCSyncCloud1 = 43,
+	RCSyncCloud2 = 44,
+	RCSyncCloud3 = 45,
+	RCSyncWireless1 = 46,
+	RCSyncWireless2 = 47,
+	NumSources = 48,
+	None = -1,
 }
 
 export enum MonitorChannels {
 	HP1_VOL = 'HP1_VOL',
 	HP2_VOL = 'HP2_VOL',
-	MON_VOL = 'MON_VOL'
+	MON_VOL = 'MON_VOL',
 }
 
 export enum recordEncoderDisplay {
 	TIMECODE = 'displayTimecode',
 	STORAGE = 'displayStorage',
 	PERCENT = 'displayPercent',
-	TIME_REMAIN = 'displayTime'
+	TIME_REMAIN = 'displayTime',
 }
 
 export enum streamEncoderDisplay {
 	TIMECODE = 'displayTimecode',
 	NAME = 'displayName',
 	BITRATE = 'displayBitrate',
-	CONNECTION = 'displayConnection'
+	CONNECTION = 'displayConnection',
 }
 
 export enum keyingMode {
 	NONE = 'none',
 	CHROMA = 'chroma',
-	LUMA = 'luma'
+	LUMA = 'luma',
 }
 
 export enum keyingCol {
 	NONE = 'none',
 	GREEN = 'ff00',
-	BLUE = 'ff'
+	BLUE = 'ff',
 }
 
 export enum keyingColStatic {
 	NONE = 'none',
 	GREEN = 'green',
-	BLUE = 'blue'
+	BLUE = 'blue',
 }
 
 export enum routingOutputs {
 	HDMI_A = 'outputA',
 	HDMI_B = 'outputB',
-	UVC_1 =  'outputUVC1',
-	NDI_1 = 'outputNDI1'
+	UVC_1 = 'outputUVC1',
+	NDI_1 = 'outputNDI1',
 }
 
 export enum routingSources {
@@ -287,7 +338,7 @@ export enum routingSources {
 	CAMERA3 = 'camera3',
 	CAMERA4 = 'camera4',
 	CAMERA5 = 'camera5',
-	CAMERA6 = 'camera6'
+	CAMERA6 = 'camera6',
 }
 
 export enum pressMode {
@@ -299,7 +350,8 @@ export enum pressMode {
 export enum mediaType {
 	VIDEO = 'video',
 	AUDIO = 'audio',
-	OTHER = 'other'
+	IMAGE = 'image',
+	OTHER = 'other',
 }
 
 export enum LogLevel {
@@ -307,5 +359,11 @@ export enum LogLevel {
 	WARN = 'warn',
 	ERROR = 'error',
 	DEBUG = 'debug',
-	TRACE = 'trace'
+	TRACE = 'trace',
+}
+
+export enum RCVSyncDevice {
+	NoDevice = 0,
+	RCPII = 141,
+	RCPIIDuo = 142,
 }

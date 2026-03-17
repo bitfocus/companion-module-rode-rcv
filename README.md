@@ -4,12 +4,20 @@
 
 ## RØDECaster Video Companion Plugin
 This module can be used to communicate with a RØDECaster Video switcher.
+
+Companion v4.1.0 or higher is required to run this module.
   
 <br/>
 
 ## Installing from pkg file manually
 
 ### Installing
+1. In Companion, open the Modules menu
+2. Search for RCV
+3. Click on the version you would like to install
+4. Go to your connection and update it to the new version
+
+### Installing (Pre-Companion 4.0)
 1. Create a new directory on your PC/Mac called `companion-plugins`.
 2. Download the latest release zip from [Releases](https://github.com/bitfocus/companion-module-rode-rcv/releases).
 3. Place the zip inside the companion-plugins directory and extract. It should create a new directory called `companion-module-rode-rcv`.
@@ -56,9 +64,15 @@ For more information, please refer to the [Companion documentation](https://gith
 - **Video Outputs**
 	- Controls video outputs.
 - **Set Media Bank**
-	- Change Media bank settings
+	- Change Media bank settings.
 - **Set Overlay Bank**
-	- Change Overlay bank settings
+	- Change Overlay bank settings.
+- **Set Input Bank**
+	- Control video inputs.
+- **Switching Mode**
+	- Control switching mode.
+- **System Commands**
+	- Perform system actions, including shutdown and reboot
 
 ### Feedbacks
 All feedbacks are booleans, which allows them to be used in triggers.
@@ -89,6 +103,8 @@ All feedbacks are booleans, which allows them to be used in triggers.
 	- Provides feedback based on video output state.
 - **Audio Meters**
 	- Show Audio Meters for live mix channels.
+- **Switching Mode**
+	- Provides feedback based on Switching Mode.
 - **Visual Switcher**
 	- Show a visual representative of the main RCV buttons.
 
@@ -104,8 +120,16 @@ All feedbacks are booleans, which allows them to be used in triggers.
 - `$(RCV:transition_time)`
 
 ##### Device Settings
+- `$(RCV:device_model)`
+- `$(RCV:device_name)`
+- `$(RCV:device_swversion)`
+- `$(RCV:device_serial)`
+- `$(RCV:device_ipaddress)`
 - `$(RCV:device_fanspeed)`
 - `$(RCV:frame_rate)`
+- `$(RCV:active_menu)`
+- `$(RCV:sync_active)`
+- `$(RCV:sync_device)`
 
 ##### Input Sources
 - `$(RCV:input_1_name)`

@@ -1,13 +1,19 @@
 {
   "name": "rode-rcv",
-  "version": "1.6.1",
+  "version": "1.7.1.1",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "yarn tsc -p tsconfig.json",
     "watch": "nodemon",
-    "package": "yarn companion-module-build",
-    "debug": "tsc && sh -c 'tail -f \"$HOME/Library/Application Support/companion/logs\"/*.log'"
+    "package": "yarn test && yarn check-format && yarn companion-module-build",
+    "debug": "yarn tsc -p tsconfig.json && sh -c 'tail -f \"$HOME/Library/Application Support/companion/logs\"/*.log'",
+    "test": "TS_NODE_PROJECT=tsconfig.test.json node --loader ts-node/esm ./node_modules/mocha/bin/mocha.js --timeout 5000 --extension ts \"tests/**/*.test.ts\"",
+    "format": "prettier --write --log-level warn \"src/**/*.ts\" \"companion/**/*.json\" \"*.json\"",
+    "check-format": "prettier --check --log-level warn \"src/**/*.ts\" \"companion/**/*.json\" \"*.json\""
+  },
+  "engines": {
+    "node": ">=22.18.0"
   },
   "types": "typings/index.d.ts",
   "keywords": [],
@@ -15,8 +21,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@companion-module/base": "^1.12.1",
-    "@tsconfig/node18": "^18.2.4",
+    "@companion-module/base": "1.13.6",
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^22.7.3",
     "companion-module-utils": "^0.5.0",
@@ -24,11 +29,20 @@
     "nanoid": "^3.3.8",
     "osc": "^2.4.5",
     "osc-js": "^2.4.1",
+    "prettier": "^3.7.4",
     "typescript": "^5.6.2"
   },
   "devDependencies": {
-    "@companion-module/tools": "^2.6.1",
-    "nodemon": "^3.1.7",
+    "@companion-module/tools": "^2.5.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/sinon": "^21.0.0",
+    "chai": "^6.2.2",
+    "esmock": "^2.7.3",
+    "jest": "^30.2.0",
+    "mocha": "^11.7.5",
+    "nodemon": "^3.1.11",
+    "sinon": "^21.0.1",
     "ts-node": "^10.9.2"
   }
 }
