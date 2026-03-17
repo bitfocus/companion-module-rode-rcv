@@ -33,10 +33,15 @@ This module can be used to communicate with a RØDECaster Video switcher.
 - **Video Outputs**
 	- Controls video outputs.
 - **Set Media Bank**
-	- Change Media bank settings
+	- Change Media bank settings.
 - **Set Overlay Bank**
-	- Change Overlay bank settings
-
+	- Change Overlay bank settings.
+- **Set Input Bank**
+	- Control video inputs.
+- **Switching Mode**
+	- Control switching mode.
+- **System Commands**
+	- Perform system actions, including shutdown and reboot
 
 ### Feedbacks
 All feedbacks are booleans, which allows them to be used in triggers.
@@ -67,6 +72,8 @@ All feedbacks are booleans, which allows them to be used in triggers.
 	- Provides feedback based on video output state.
 - **Audio Meters**
 	- Show Audio Meters for live mix channels.
+- **Switching Mode**
+	- Provides feedback based on Switching Mode.
 - **Visual Switcher**
 	- Show a visual representative of the main RCV buttons.
 
@@ -82,8 +89,16 @@ All feedbacks are booleans, which allows them to be used in triggers.
 - `$(RCV:transition_time)`
 
 ##### Device Settings
+- `$(RCV:device_model)`
+- `$(RCV:device_name)`
+- `$(RCV:device_swversion)`
+- `$(RCV:device_serial)`
+- `$(RCV:device_ipaddress)`
 - `$(RCV:device_fanspeed)`
 - `$(RCV:frame_rate)`
+- `$(RCV:active_menu)`
+- `$(RCV:sync_active)`
+- `$(RCV:sync_device)`
 
 ##### Input Sources
 - `$(RCV:input_1_name)`

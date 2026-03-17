@@ -1,10 +1,57 @@
 import { Regex } from '@companion-module/base';
 import { commands } from '../modules/commands.js';
-import type { RCVInstance } from '../index.js'
+import type { RCVInstance } from '../index.js';
 import { sendOSCCommand } from '../modules/oscController.js';
-import { audioLevelsPercentageTable, buttonList, channelList, controllerVariables, frameRateList, mediaSources, mixerChannels, mixList, monitorChannels, submixList, transitionsList } from '../modules/constants.js';
-import { audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, keyingCol, keyingMode, LogLevel, mediaType, MonitorChannels, pressMode, routingOutputs, routingSources, transitionType } from '../modules/enums.js';
-import { audioChannelsChoices, audioMixesChoices, controlButtonChoices, filterButtonListByEnum, framesToMs, getKeyByValue, inputButtonChoices, keySourceChoices, mediaButtonChoices, msToFrames, overlayButtonChoices, sceneButtonChoices, transitionChoices } from '../helpers/commonHelpers.js';
+import {
+	audioLevelsPercentageTable,
+	buttonList,
+	channelList,
+	channelList_Sync,
+	controllerVariables,
+	frameRateList,
+	mediaSources,
+	mixerChannels,
+	mixList,
+	monitorChannels,
+	submixList,
+	transitionsList,
+	videoSources,
+} from '../modules/constants.js';
+import {
+	audioChannels,
+	buttonPressControlType,
+	buttonPressInputsType,
+	buttonPressMediaType,
+	buttonPressOverlayType,
+	buttonPressSceneType,
+	keyingCol,
+	keyingMode,
+	LogLevel,
+	mediaType,
+	MonitorChannels,
+	pressMode,
+	RCVModel,
+	RCVSyncDevice,
+	routingOutputs,
+	routingSources,
+	transitionType,
+} from '../modules/enums.js';
+import {
+	allSyncChannelsExpr,
+	framesToMs,
+	getaudioChannelsChoices,
+	getaudioMixesChoices,
+	getButtonChoices,
+	getKeyByValue,
+	getkeySourceChoices,
+	getMediaSourcesChoices,
+	getroutingInputChoices,
+	getroutingOutputChoices,
+	getsourceInputChoices,
+	isSyncChannel,
+	msToFrames,
+	transitionChoices,
+} from '../helpers/commonHelpers.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { dbToFloat, floatToDb } from '../helpers/decibelHelper.js';
 import { Console } from 'console';
@@ -26,25 +73,47 @@ export enum ActionId {
 	routing = 'routing',
 	setMedia = 'setMedia',
 	setOverlay = 'setOverlay',
+	setInput = 'setInput',
+	switching_mode = 'switching_mode',
+	system = 'system',
 }
 
 export function UpdateActions(instance: RCVInstance): void {
 	instance.setActionDefinitions({
 		[ActionId.control_buttons]: {
-            name: 'Control Buttons',
+			name: 'Control Buttons',
 			description: 'Assign based on physical buttons on the device',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Control',
-					choices: controlButtonChoices,
-					default: controlButtonChoices[0]?.id
+					choices: getButtonChoices(buttonPressControlType),
+					default: getButtonChoices(buttonPressControlType)[0]?.id,
+				},
+				{
+					id: 'mechanism',
+					type: 'dropdown',
+					label: 'Function',
+					choices: [
+						{ id: 'toggle', label: 'Toggle' },
+						{ id: 'start', label: 'Start' },
+						{ id: 'stop', label: 'Stop' },
+					],
+					default: 'toggle',
+					isVisible: (options) => {
+						return (
+							options.control === buttonPressControlType.BUTTON_RECORD.toString() ||
+							options.control === buttonPressControlType.BUTTON_STREAM.toString()
+						);
+					},
+					isVisibleExpression: `$(options:control) === "${buttonPressControlType.BUTTON_RECORD.toString()}" || $(options:control) === "${buttonPressControlType.BUTTON_STREAM.toString()}"`,
 				},
 			],
-            callback: async (ev, context) => {
-
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				const value = ev.options.control as buttonPressControlType;
+				const mechanism = ev.options.mechanism as string;
 
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
@@ -52,49 +121,81 @@ export function UpdateActions(instance: RCVInstance): void {
 
 					if (value === buttonPressControlType.BUTTON_RECORD) {
 						if (controllerVariables.allowRecord) {
-							if (controllerVariables.recording) {
-								command = commands.STOP_RECORD;
-							} else {
+							if (mechanism === 'toggle') {
+								if (controllerVariables.recording) {
+									command = commands.STOP_RECORD;
+								} else {
+									command = commands.START_RECORD;
+								}
+							} else if (mechanism === 'start') {
+								if (controllerVariables.recording) {
+									ConsoleLog(instance, `Recording already active`, LogLevel.WARN, false);
+									return;
+								}
+
 								command = commands.START_RECORD;
+							} else if (mechanism === 'stop') {
+								if (!controllerVariables.recording) {
+									ConsoleLog(instance, `Recording is not active`, LogLevel.WARN, false);
+									return;
+								}
+
+								command = commands.STOP_RECORD;
 							}
 						} else {
 							ConsoleLog(instance, `Recording not allowed`, LogLevel.ERROR, false);
 						}
-
 					} else if (value === buttonPressControlType.BUTTON_STREAM) {
 						if (controllerVariables.allowStream) {
-							if (controllerVariables.streaming) {
-								command = commands.STOP_STREAM;
-								controllerVariables.streaming = false;
-							} else {
+							if (mechanism === 'toggle') {
+								if (controllerVariables.streaming) {
+									command = commands.STOP_STREAM;
+									controllerVariables.streaming = false;
+								} else {
+									command = commands.START_STREAM;
+									controllerVariables.streaming = true;
+								}
+							} else if (mechanism === 'start') {
+								if (controllerVariables.streaming) {
+									ConsoleLog(instance, `Streaming already active`, LogLevel.WARN, false);
+									return;
+								}
+
 								command = commands.START_STREAM;
-								controllerVariables.streaming = true;
+							} else if (mechanism === 'stop') {
+								if (!controllerVariables.streaming) {
+									ConsoleLog(instance, `Streaming is not active`, LogLevel.WARN, false);
+									return;
+								}
+
+								command = commands.STOP_STREAM;
 							}
 						} else {
 							ConsoleLog(instance, `Streaming not allowed`, LogLevel.ERROR, false);
 						}
+					} else if (value === buttonPressControlType.BUTTON_FTB) {
+						await sendOSCCommand(instance, command[0].toString(), command[1], 0);
+						await sendOSCCommand(instance, command[0].toString(), command[1], 1);
 
+						return;
 					}
 
 					if (button.command?.[2] == undefined) {
 						await sendOSCCommand(instance, command[0].toString(), command[1]);
-			
 					} else {
 						await sendOSCCommand(instance, command[0].toString(), command[1], command[2]);
-			
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid control button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'control_buttons';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -102,38 +203,45 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'control_buttons';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.inputs]: {
-            name: 'Input Buttons',
+			name: 'Input Buttons',
 			description: 'Trigger Inputs directly',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Input',
-					choices: inputButtonChoices,
-					default: inputButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; }
+					choices: getButtonChoices(buttonPressInputsType),
+					default: getButtonChoices(buttonPressInputsType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Input (Must be a numeric value between 1 - 6)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				let value;
 
 				if (ev.options.variable) {
@@ -141,12 +249,16 @@ export function UpdateActions(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 6) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 6. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 6. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `input${_value}`;
-
 				} else {
 					value = ev.options.control as buttonPressInputsType;
 				}
@@ -156,23 +268,20 @@ export function UpdateActions(instance: RCVInstance): void {
 
 					if (button.command?.[2] == undefined) {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1]);
-			
 					} else {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1], button.command[2]);
-			
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid input button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'inputs';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -180,38 +289,45 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'inputs';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.scenes]: {
-            name: 'Scene Buttons',
+			name: 'Scene Buttons',
 			description: 'Trigger Scenes directly',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Scene',
-					choices: sceneButtonChoices,
-					default: sceneButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressSceneType),
+					default: getButtonChoices(buttonPressSceneType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Scene (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				let value;
 
 				if (ev.options.variable) {
@@ -219,12 +335,16 @@ export function UpdateActions(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `scene${_value}`;
-
 				} else {
 					value = ev.options.control as buttonPressSceneType;
 				}
@@ -234,23 +354,20 @@ export function UpdateActions(instance: RCVInstance): void {
 
 					if (button.command?.[2] == undefined) {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1]);
-			
 					} else {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1], button.command[2]);
-			
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid scene button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'scenes';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -258,38 +375,45 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'scenes';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.media]: {
-            name: 'Media Sources',
+			name: 'Media Sources',
 			description: 'Trigger Media directly',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Media',
-					choices: mediaButtonChoices,
-					default: mediaButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressMediaType),
+					default: getButtonChoices(buttonPressMediaType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Media (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				let value;
 
 				if (ev.options.variable) {
@@ -297,12 +421,16 @@ export function UpdateActions(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `media${_value}`;
-
 				} else {
 					value = ev.options.control as buttonPressMediaType;
 				}
@@ -314,35 +442,28 @@ export function UpdateActions(instance: RCVInstance): void {
 						const mediaSource = mediaSources[button.id];
 
 						if (mediaSource.mediaType === mediaType.AUDIO) {
-
 							//Trigger the sound regardless of pressMode as Companion can't detect held state
 							await sendOSCCommand(instance, button.command[0].toString(), button.command[1], 1);
 							await sendOSCCommand(instance, button.command[0].toString(), button.command[1], 0);
-							
 						} else {
-
 							if (button.command?.[2] == undefined) {
 								await sendOSCCommand(instance, button.command[0].toString(), button.command[1]);
-					
 							} else {
 								await sendOSCCommand(instance, button.command[0].toString(), button.command[1], button.command[2]);
-					
 							}
 						}
-
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid media button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'media';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -350,38 +471,58 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'media';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.overlays]: {
-            name: 'Overlay Sources',
+			name: 'Overlay Sources',
 			description: 'Trigger Overlays directly',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Overlay',
-					choices: overlayButtonChoices,
-					default: overlayButtonChoices[0]?.id,
-					isVisible: (options) => { return options.variable === false; },
+					choices: getButtonChoices(buttonPressOverlayType),
+					default: getButtonChoices(buttonPressOverlayType)[0]?.id,
+					isVisible: (options) => {
+						return options.variable === false;
+					},
+					isVisibleExpression: '$(options:variable) === false',
 				},
 				{
 					id: 'control_var',
 					type: 'textinput',
 					label: 'Overlay (Must be a numeric value between 1 - 7)',
-					default: "1",
+					default: '1',
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true; },
+					isVisible: (options) => {
+						return options.variable === true;
+					},
+					isVisibleExpression: '$(options:variable) === true',
 				},
+				/*
+				{
+					id: 'mechanism',
+					type: 'dropdown',
+					label: 'Function',
+					choices: [
+						{ id: 'toggle', label: 'Toggle' },
+						{ id: 'on', label: 'On' },
+						{ id: 'off', label: 'Off' },
+					],
+					default: 'toggle',
+				},
+				*/
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				let value;
 
 				if (ev.options.variable) {
@@ -389,12 +530,16 @@ export function UpdateActions(instance: RCVInstance): void {
 					const _value = Number(varString);
 
 					if (!_value || _value < 1 || _value > 7) {
-						ConsoleLog(instance, `Value out of range. Must be between 1 and 7. Actual Value: ${value}`, LogLevel.ERROR, false);
+						ConsoleLog(
+							instance,
+							`Value out of range. Must be between 1 and 7. Actual Value: ${value}`,
+							LogLevel.ERROR,
+							false,
+						);
 						return;
 					}
 
 					value = `overlay${_value}`;
-
 				} else {
 					value = ev.options.control as buttonPressOverlayType;
 				}
@@ -404,23 +549,20 @@ export function UpdateActions(instance: RCVInstance): void {
 
 					if (button.command?.[2] == undefined) {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1]);
-			
 					} else {
 						await sendOSCCommand(instance, button.command[0].toString(), button.command[1], button.command[2]);
-			
 					}
-
 				} else {
 					ConsoleLog(instance, `Invalid overlay button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'overlays';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -428,27 +570,27 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'overlays';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.audio_sources]: {
-            name: 'Audio Sources',
+			name: 'Audio Sources',
 			description: 'Control Audio Sources',
-            options: [
+			options: [
 				{
 					id: 'channel',
 					type: 'dropdown',
 					label: 'Channel',
-					choices: audioChannelsChoices,
-					default: audioChannelsChoices[0]?.id
+					choices: getaudioChannelsChoices(),
+					default: getaudioChannelsChoices()[0]?.id,
 				},
 				{
 					id: 'submix',
 					type: 'dropdown',
 					label: 'Mix',
-					choices: audioMixesChoices,
-					default: audioMixesChoices[0]?.id
+					choices: getaudioMixesChoices(),
+					default: getaudioMixesChoices()[0]?.id,
 				},
 				{
 					id: 'action',
@@ -461,6 +603,25 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'mute', label: 'Toggle Mute' },
 					],
 					default: 'volume',
+					isVisible: (options) => {
+						return !isSyncChannel(options.channel);
+					},
+					isVisibleExpression: `!arrayIncludes(${allSyncChannelsExpr}, $(options:channel))`,
+				},
+				{
+					id: 'action_sync',
+					type: 'dropdown',
+					label: 'Action',
+					choices: [
+						{ id: 'gain', label: 'Change Gain' },
+						{ id: 'setmute', label: 'Set Mute' },
+						{ id: 'mute', label: 'Toggle Mute' },
+					],
+					default: 'gain',
+					isVisible: (options) => {
+						return isSyncChannel(options.channel);
+					},
+					isVisibleExpression: `arrayIncludes(${allSyncChannelsExpr}, $(options:channel))`,
 				},
 				{
 					id: 'mechanism',
@@ -472,7 +633,11 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'relative', label: 'Relative' },
 					],
 					default: 'set',
-					isVisible: (options) => { return options.action === 'volume'; }
+					isVisible: (options) => {
+						const activeAction = isSyncChannel(options.channel) ? options.action_sync : options.action;
+						return activeAction === 'volume';
+					},
+					isVisibleExpression: `!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'volume'`,
 				},
 				{
 					id: 'volume_value',
@@ -484,7 +649,15 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return (options.variable === false && options.action === 'volume' && options.mechanism !== 'relative'); }
+					isVisible: (options) => {
+						return (
+							!isSyncChannel(options.channel) &&
+							options.variable === false &&
+							options.action === 'volume' &&
+							options.mechanism !== 'relative'
+						);
+					},
+					isVisibleExpression: `!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:variable) == false && $(options:action) == 'volume' && $(options:mechanism) != 'relative'`,
 				},
 				{
 					id: 'gain_value',
@@ -496,7 +669,11 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.variable === false && options.action === 'gain'; }
+					isVisible: (options) => {
+						const activeAction = isSyncChannel(options.channel) ? options.action_sync : options.action;
+						return options.variable === false && activeAction === 'gain';
+					},
+					isVisibleExpression: `$(options:variable) == false && ((arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action_sync) == 'gain') || (!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'gain'))`,
 				},
 				{
 					id: 'fade_time',
@@ -508,7 +685,10 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: false,
 					required: true,
-					isVisible: (options) => { return options.variable === false && options.mechanism === 'fade'; }
+					isVisible: (options) => {
+						return options.variable === false && options.mechanism === 'fade';
+					},
+					isVisibleExpression: `$(options:variable) == false && $(options:mechanism) == 'fade'`,
 				},
 				{
 					id: 'relative_value',
@@ -520,58 +700,90 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.mechanism === 'relative'; }
+					isVisible: (options) => {
+						return options.mechanism === 'relative';
+					},
+					isVisibleExpression: `$(options:mechanism) == 'relative'`,
 				},
 				{
 					id: 'volume_value_var',
 					type: 'textinput',
 					label: 'Value (Must be a numeric value in dB between -60 and 6)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return (options.variable === true && options.action === 'volume' && options.mechanism !== 'relative'); }
+					isVisible: (options) => {
+						return (
+							!isSyncChannel(options.channel) &&
+							options.variable === true &&
+							options.action === 'volume' &&
+							options.mechanism !== 'relative'
+						);
+					},
+					isVisibleExpression: `!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:variable) == true && $(options:action) == 'volume' && $(options:mechanism) != 'relative'`,
 				},
 				{
 					id: 'gain_value_var',
 					type: 'textinput',
 					label: 'Value (Must be a numeric value in dB between -24 and 76)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true && options.action === 'gain'; }
+					isVisible: (options) => {
+						const activeAction = isSyncChannel(options.channel) ? options.action_sync : options.action;
+						return options.variable === true && activeAction === 'gain';
+					},
+					isVisibleExpression: `$(options:variable) == true && ((arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action_sync) == 'gain') || (!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'gain'))`,
 				},
 				{
 					id: 'fade_time_var',
 					type: 'textinput',
 					label: 'Fade Duration (Must be a numeric value in ms)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true && options.mechanism === 'fade'; }
+					isVisible: (options) => {
+						return options.variable === true && options.mechanism === 'fade';
+					},
+					isVisibleExpression: `$(options:variable) == true && $(options:mechanism) == 'fade'`,
 				},
 				{
 					id: 'ismuted',
 					type: 'checkbox',
 					label: 'Mute State',
 					default: false,
-					isVisible: (options) => { return options.action === 'setmute' }
+					isVisible: (options) => {
+						const activeAction = isSyncChannel(options.channel) ? options.action_sync : options.action;
+						return activeAction === 'setmute';
+					},
+					isVisibleExpression: `((arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action_sync) == 'setmute') || (!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'setmute'))`,
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-					isVisible: (options) => { return options.mechanism !== 'relative' && options.action !== 'mute' && options.action !== 'setmute' ; }
-				}
+					isVisible: (options) => {
+						const activeAction = isSyncChannel(options.channel) ? options.action_sync : options.action;
+						return options.mechanism !== 'relative' && activeAction !== 'mute' && activeAction !== 'setmute';
+					},
+					isVisibleExpression: `$(options:mechanism) != 'relative' && !((arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action_sync) == 'mute') || (!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'mute')) && !((arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action_sync) == 'setmute') || (!arrayIncludes(${allSyncChannelsExpr}, $(options:channel)) && $(options:action) == 'setmute'))`,
+				},
 			],
 			learn: (ev, context) => {
-				const action = ev.options.action;
+				let action;
 				const _channel = ev.options.channel as string;
 				const _submix = ev.options.submix as string;
 
+				if (channelList_Sync[RCVSyncDevice.NoDevice].includes(_channel as audioChannels)) {
+					action = ev.options.action_sync;
+				} else {
+					action = ev.options.action;
+				}
+
 				if (mixerChannels.hasOwnProperty(_channel)) {
 					const mixer = mixerChannels[_channel];
-					
+
 					if (action == 'gain') {
 						const currentGain = Number(mixer.gain);
 
@@ -582,7 +794,7 @@ export function UpdateActions(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							gain_value: currentGain,
-						}
+						};
 					} else if (action == 'volume') {
 						const currentLevel = mixer.submixes[mixList[_submix].id].level;
 						const outputLevel = floatToDb(currentLevel);
@@ -594,7 +806,7 @@ export function UpdateActions(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							volume_value: outputLevel,
-						}
+						};
 					} else if (action == 'setmute') {
 						const currentMute = mixer.submixes[mixList[_submix].id].muted;
 
@@ -605,29 +817,37 @@ export function UpdateActions(instance: RCVInstance): void {
 						return {
 							...ev.options,
 							ismuted: !currentMute,
-						}
+						};
 					}
-
 				} else {
-					ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
+					ConsoleLog(
+						instance,
+						`Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`,
+						LogLevel.ERROR,
+						false,
+					);
 				}
 
 				return undefined;
-			
 			},
-            callback: async (ev, context) => {
-				const action = ev.options.action;
+			callback: async (ev, context) => {
+				let action;
 				const _channel = ev.options.channel as string;
 				const _submix = ev.options.submix as string;
+
+				if (channelList_Sync[RCVSyncDevice.NoDevice].includes(_channel as audioChannels)) {
+					action = ev.options.action_sync;
+				} else {
+					action = ev.options.action;
+				}
 
 				if (mixerChannels.hasOwnProperty(_channel)) {
 					const mixer = mixerChannels[_channel];
 					const mixerNo = parseInt(_channel.match(/^value(\d+)$/)[1]) + 1;
-					
-					if (action == 'gain') {
 
+					if (action == 'gain') {
 						let newValue = 0;
-						
+
 						if (ev.options.variable === true) {
 							let varString = await context.parseVariablesInString(ev.options.gain_value_var.toString());
 							let _newValue = Number(varString);
@@ -648,17 +868,16 @@ export function UpdateActions(instance: RCVInstance): void {
 							newValue = ev.options.gain_value as number;
 						}
 
-
 						const currentGain = Number(mixer.gain);
 						const minGain = Number(channelList[_channel].minGain);
 						const maxGain = Number(channelList[_channel].maxGain);
 
 						let newGain = newValue;
-	
+
 						if (newGain < minGain) {
 							newGain = minGain;
 						}
-	
+
 						if (newGain > maxGain) {
 							newGain = maxGain;
 						}
@@ -670,22 +889,19 @@ export function UpdateActions(instance: RCVInstance): void {
 
 						const varName = `${getKeyByValue(audioChannels, _channel).toLocaleLowerCase()}_setgain`;
 
-						if (instance.variables.some(variable => variable.variableId === varName)) {
-
+						if (instance.variables.some((variable) => variable.variableId === varName)) {
 							instance.setVariableValues({
 								[varName]: newGain.toString(),
 							});
 
 							ConsoleLog(instance, `Setting variable ${varName} to value ${newGain}`, LogLevel.DEBUG, false);
-
 						}
-
 					} else if (action == 'volume') {
 						const currentLevel = mixer.submixes[mixList[_submix].id].level;
 						const mechanism = ev.options.mechanism as string;
 
 						let newValue = 0;
-						
+
 						if (ev.options.variable === true) {
 							const varString = await context.parseVariablesInString(ev.options.volume_value_var.toString());
 							let _newValue = Number(varString);
@@ -706,11 +922,10 @@ export function UpdateActions(instance: RCVInstance): void {
 							newValue = ev.options.volume_value as number;
 						}
 
-
 						if (mixer.fading) {
 							return;
 						}
-	
+
 						//Convert to Float
 						let finalLevel = dbToFloat(newValue);
 
@@ -719,7 +934,6 @@ export function UpdateActions(instance: RCVInstance): void {
 							let offset = Number(relative);
 
 							if (!isNaN(offset)) {
-
 								const currentDb = floatToDb(currentLevel);
 								const target = currentDb + offset;
 								const dbClamp = Math.max(-60, Math.min(6, target));
@@ -727,26 +941,27 @@ export function UpdateActions(instance: RCVInstance): void {
 								const targetLevel = Math.max(0, Math.min(0.9999999999, preClamp)); // clamp value between 0 and 1
 
 								const varName = `${getKeyByValue(audioChannels, _channel).toLocaleLowerCase()}-${_submix}_setlevel`;
-								if (instance.variables.some(variable => variable.variableId === varName)) {
-
+								if (instance.variables.some((variable) => variable.variableId === varName)) {
 									instance.setVariableValues({
 										[varName]: floatToDb(targetLevel).toString(),
 									});
 
-									ConsoleLog(instance, `Setting variable ${varName} to value ${floatToDb(targetLevel)}`, LogLevel.DEBUG, false);
-
+									ConsoleLog(
+										instance,
+										`Setting variable ${varName} to value ${floatToDb(targetLevel)}`,
+										LogLevel.DEBUG,
+										false,
+									);
 								}
 
 								mixer.submixes[mixList[_submix].id].level = targetLevel;
 
 								sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, targetLevel);
 								instance.checkFeedbacks('audio_sources');
-
 							}
-
 						} else if (mechanism === 'fade') {
 							let fadeTime = 0;
-						
+
 							if (ev.options.variable === true) {
 								const varString = await context.parseVariablesInString(ev.options.fade_time_var.toString());
 								let _fadeTime = Number(varString);
@@ -769,7 +984,7 @@ export function UpdateActions(instance: RCVInstance): void {
 							const interval = 100; // update interval in milliseconds
 							const steps = Math.ceil(fadeTime / interval); // number of steps
 							const step = levelDifference / steps; // amount to change per step
-						
+
 							// Mark the channel as fading
 							mixer.fading = true;
 
@@ -788,51 +1003,52 @@ export function UpdateActions(instance: RCVInstance): void {
 								clearInterval(backupTimeout);
 								mixer.fading = false; // Reset fading flag as a backup
 							}, fadeTime + interval);
-						
+
 							const fadeInterval = setInterval(async () => {
 								let newLevel;
-						
-								if (currentStep >= steps - 1) {  // Corrected to ensure final step
+
+								if (currentStep >= steps - 1) {
+									// Corrected to ensure final step
 									// Final step: Set the level to the closest value from the reference table
 									newLevel = finalLevel;
 									clearInterval(fadeInterval);
-						
+
 									// Set fading to false when fade process ends
 									mixer.fading = false;
 								} else {
 									newLevel = currentLevel + step * currentStep;
 								}
-						
+
 								currentStep++;
 								newLevel = Math.max(0, Math.min(0.9999999999, newLevel)); // clamp value between 0 and 1
 
 								mixer.submixes[mixList[_submix].id].level = newLevel;
 
 								const varName = `${getKeyByValue(audioChannels, _channel).toLocaleLowerCase()}-${_submix}_setlevel`;
-								if (instance.variables.some(variable => variable.variableId === varName)) {
-
+								if (instance.variables.some((variable) => variable.variableId === varName)) {
 									instance.setVariableValues({
 										[varName]: floatToDb(newLevel).toString(),
 									});
 
-									ConsoleLog(instance, `Setting variable ${varName} to value ${floatToDb(newLevel)}`, LogLevel.DEBUG, false);
+									ConsoleLog(
+										instance,
+										`Setting variable ${varName} to value ${floatToDb(newLevel)}`,
+										LogLevel.DEBUG,
+										false,
+									);
 									instance.checkFeedbacks('audio_sources');
 								}
 
 								instance.checkFeedbacks('audio_sources');
-						
+
 								//sendOSCCommand(`/submix/stream/${mixerNo}/level`, newLevel);
 								sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, newLevel);
-								
-							
 							}, interval);
-						
-
 						} else {
 							if (finalLevel < 0) {
 								finalLevel = 0;
 							}
-		
+
 							if (finalLevel >= 1) {
 								finalLevel = 0.9999999999; //This alleviates a glitch which causes the volume to go to 0 if 1 is sent.
 							}
@@ -840,22 +1056,25 @@ export function UpdateActions(instance: RCVInstance): void {
 							mixer.submixes[mixList[_submix].id].level = finalLevel;
 
 							const varName = `${getKeyByValue(audioChannels, _channel).toLocaleLowerCase()}-${_submix}_setlevel`;
-							if (instance.variables.some(variable => variable.variableId === varName)) {
-
+							if (instance.variables.some((variable) => variable.variableId === varName)) {
 								instance.setVariableValues({
 									[varName]: floatToDb(finalLevel).toString(),
 								});
 
-								ConsoleLog(instance, `Setting variable ${varName} to value ${floatToDb(finalLevel)}`, LogLevel.DEBUG, false);
+								ConsoleLog(
+									instance,
+									`Setting variable ${varName} to value ${floatToDb(finalLevel)}`,
+									LogLevel.DEBUG,
+									false,
+								);
 								instance.checkFeedbacks('audio_sources');
 							}
-							
+
 							instance.checkFeedbacks('audio_sources');
 
 							//mixer.submixes[mixList[mix].id].level = outputLevel;
 							await sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/level`, finalLevel);
 						}
-
 					} else if (action == 'setmute') {
 						const isMuted = ev.options.ismuted as boolean;
 
@@ -898,17 +1117,21 @@ export function UpdateActions(instance: RCVInstance): void {
 
 						await sendOSCCommand(instance, `${submixList[_submix].path}/${mixerNo}/mute`, mute);
 					}
-
 				} else {
-					ConsoleLog(instance, `Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`, LogLevel.ERROR, false);
+					ConsoleLog(
+						instance,
+						`Invalid or Inactive/Unassigned Audio Source: ${_channel}/${_submix}`,
+						LogLevel.ERROR,
+						false,
+					);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'audio_sources';
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -916,14 +1139,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'audio_sources';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.audio_delay]: {
-            name: 'Audio Delay',
+			name: 'Audio Delay',
 			description: 'Control Audio Delay',
-            options: [
+			options: [
 				{
 					id: 'metric',
 					type: 'dropdown',
@@ -944,7 +1167,10 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.variable === false && options.metric === 'ms'; }
+					isVisible: (options) => {
+						return options.variable === false && options.metric === 'ms';
+					},
+					isVisibleExpression: "$(options:variable) === false && $(options:metric) === 'ms'",
 				},
 				{
 					id: 'frames_value',
@@ -956,32 +1182,41 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.variable === false && options.metric === 'frames'; }
+					isVisible: (options) => {
+						return options.variable === false && options.metric === 'frames';
+					},
+					isVisibleExpression: "$(options:variable) === false && $(options:metric) === 'frames'",
 				},
 				{
 					id: 'ms_value_var',
 					type: 'textinput',
 					label: 'Value (Must be a numeric value)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true && options.metric === 'ms'; }
+					isVisible: (options) => {
+						return options.variable === true && options.metric === 'ms';
+					},
+					isVisibleExpression: "$(options:variable) === true && $(options:metric) === 'ms'",
 				},
 				{
 					id: 'frames_value_var',
 					type: 'textinput',
 					label: 'Value (Must be a numeric value)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.variable === true && options.metric === 'frames'; }
+					isVisible: (options) => {
+						return options.variable === true && options.metric === 'frames';
+					},
+					isVisibleExpression: "$(options:variable) === true && $(options:metric) === 'frames'",
 				},
 				{
 					id: 'variable',
 					type: 'checkbox',
 					label: 'Use Variables',
 					default: false,
-				}
+				},
 			],
 			learn: (ev) => {
 				const action = ev.options.metric;
@@ -991,26 +1226,23 @@ export function UpdateActions(instance: RCVInstance): void {
 					return undefined;
 				}
 
-
 				if (action === 'ms') {
 					return {
 						...ev.options,
 						ms_value: currentDelay,
 						frames_value: msToFrames(currentDelay),
-					}
-
+					};
 				} else if (action === 'frames') {
 					return {
 						...ev.options,
 						frames_value: msToFrames(currentDelay),
 						ms_value: currentDelay,
-					}
+					};
 				}
 
 				return undefined;
-			
 			},
-            callback: async (ev, context) => {
+			callback: async (ev, context) => {
 				const metric = ev.options.metric as string;
 				const currentDelay = controllerVariables.audioMasterDelay || 0;
 				let value = 0;
@@ -1033,9 +1265,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					} else {
 						value = ev.options.ms_value as number;
 					}
-
 				} else if (metric === 'frames') {
-
 					if (ev.options.variable === true) {
 						const varString = await context.parseVariablesInString(ev.options.frames_value_var.toString());
 						let _valueVar = Number(varString);
@@ -1053,7 +1283,6 @@ export function UpdateActions(instance: RCVInstance): void {
 					} else {
 						value = framesToMs(ev.options.frames_value as number);
 					}
-
 				}
 
 				let newFrames = value;
@@ -1063,22 +1292,22 @@ export function UpdateActions(instance: RCVInstance): void {
 				} else if (newFrames > 500) {
 					newFrames = 500;
 				}
-				
+
 				await sendOSCCommand(instance, commands.AUDIO_DELAY[0].toString(), newFrames);
 				controllerVariables.audioMasterDelay = newFrames;
 
 				instance.setVariableValues({
-					'audio_delay_frames': msToFrames(newFrames).toString(),
-					'audio_delay_ms': newFrames.toString()
+					audio_delay_frames: msToFrames(newFrames).toString(),
+					audio_delay_ms: newFrames.toString(),
 				});
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'audio_delay';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1086,14 +1315,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'audio_delay';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.transitions]: {
-            name: 'Transitions',
+			name: 'Transitions',
 			description: 'Control Transitions',
-            options: [
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -1110,23 +1339,32 @@ export function UpdateActions(instance: RCVInstance): void {
 					label: 'Transition',
 					choices: transitionChoices,
 					default: transitionChoices[0]?.id,
-					isVisible: (options) => { return options.action === 'transition'; }
+					isVisible: (options) => {
+						return options.action === 'transition';
+					},
+					isVisibleExpression: "$(options:action) === 'transition'",
 				},
 				{
 					id: 'mirror',
 					type: 'checkbox',
 					label: 'Mirror Transition',
 					default: false,
-					isVisible: (options) => { return options.action === 'transition'; }
+					isVisible: (options) => {
+						return options.action === 'transition';
+					},
+					isVisibleExpression: "$(options:action) === 'transition'",
 				},
 				{
 					id: 'time',
 					type: 'textinput',
 					label: 'Transition Time (ms)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.action === 'time'; }
+					isVisible: (options) => {
+						return options.action === 'time';
+					},
+					isVisibleExpression: "$(options:action) === 'time'",
 				},
 			],
 			learn: (ev) => {
@@ -1138,12 +1376,11 @@ export function UpdateActions(instance: RCVInstance): void {
 					if (currentTransitionTime === undefined) {
 						return undefined;
 					}
-	
+
 					return {
 						...ev.options,
 						time: currentTransitionTime,
-					}
-
+					};
 				} else if (action === 'transition') {
 					const currentTransition = controllerVariables.currentTransition;
 					const mirror = controllerVariables.transitionInvert;
@@ -1154,21 +1391,19 @@ export function UpdateActions(instance: RCVInstance): void {
 
 					if (transitionsList.hasOwnProperty(currentTransition)) {
 						const transition = transitionsList[currentTransition];
-						const transitionKey = Object.keys(transitionsList).find(key => transitionsList[key] === transition);
+						const transitionKey = Object.keys(transitionsList).find((key) => transitionsList[key] === transition);
 
 						return {
 							...ev.options,
 							transition: transitionKey,
 							mirror: mirror,
-						}
+						};
 					}
-	
 				}
 
 				return undefined;
-			
 			},
-            callback: async (ev, context) => {
+			callback: async (ev, context) => {
 				const action = ev.options.action as string;
 
 				if (action === 'transition') {
@@ -1187,13 +1422,11 @@ export function UpdateActions(instance: RCVInstance): void {
 						ConsoleLog(instance, `Transition ${_transition} not found`, LogLevel.ERROR, false);
 					}
 
-
 					if (mirror) {
 						await sendOSCCommand(instance, commands.TRANSITION_MIRROR.toString(), 1);
 					} else {
 						await sendOSCCommand(instance, commands.TRANSITION_MIRROR.toString(), 0);
 					}
-
 				} else if (action === 'time') {
 					const varString = await context.parseVariablesInString(ev.options.time.toString());
 					const time = Number(varString);
@@ -1208,29 +1441,28 @@ export function UpdateActions(instance: RCVInstance): void {
 					if (currentTransTime < 0) {
 						currentTransTime = 0;
 					}
-	
+
 					// Ensure currentTransTime does not exceed 60 seconds
 					if (currentTransTime > 60000) {
 						currentTransTime = 60000;
 					}
 
 					controllerVariables.currentTransTime = currentTransTime;
-	
-					await sendOSCCommand(instance, commands.TRANSITION_TIME.toString(), currentTransTime.toString());
 
+					await sendOSCCommand(instance, commands.TRANSITION_TIME.toString(), currentTransTime.toString());
 				}
 
 				instance.setVariableValues({
-					'transition_time': controllerVariables.currentTransTime.toString(),
+					transition_time: controllerVariables.currentTransTime.toString(),
 				});
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'transitions';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1238,14 +1470,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'transitions';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.auto_switching]: {
-            name: 'Auto Switching',
+			name: 'Auto Switching',
 			description: 'Control Auto Switching',
-            options: [
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -1256,40 +1488,37 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'toggle', label: 'Toggle' },
 					],
 					default: 'toggle',
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				const action = ev.options.action as string;
 
 				if (action === 'enable') {
 					await sendOSCCommand(instance, commands.AUTOSWITCH_ENABLE[0].toString(), commands.AUTOSWITCH_ENABLE[1]);
 					controllerVariables.autoswitchEnabled = true;
-
 				} else if (action === 'disable') {
 					await sendOSCCommand(instance, commands.AUTOSWITCH_DISABLE[0].toString(), commands.AUTOSWITCH_DISABLE[1]);
 					controllerVariables.autoswitchEnabled = false;
-
 				} else if (action === 'toggle') {
 					if (controllerVariables.autoswitchEnabled) {
 						await sendOSCCommand(instance, commands.AUTOSWITCH_DISABLE[0].toString(), commands.AUTOSWITCH_DISABLE[1]);
 						controllerVariables.autoswitchEnabled = false;
-			
 					} else {
 						await sendOSCCommand(instance, commands.AUTOSWITCH_ENABLE[0].toString(), commands.AUTOSWITCH_ENABLE[1]);
 						controllerVariables.autoswitchEnabled = true;
-			
 					}
 				}
 
-				instance.checkFeedbacks('auto_switching');			
-            },
+				instance.checkFeedbacks('auto_switching');
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'auto_switching';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1297,14 +1526,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'auto_switching';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.logo]: {
-            name: 'Logo',
+			name: 'Logo',
 			description: 'Control Logo',
-            options: [
+			options: [
 				{
 					id: 'action',
 					type: 'dropdown',
@@ -1315,41 +1544,37 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'toggle', label: 'Toggle' },
 					],
 					default: 'toggle',
-				}
+				},
 			],
-            callback: async (ev, context) => {
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				const action = ev.options.action as string;
 
 				if (action === 'enable') {
 					await sendOSCCommand(instance, commands.SHOW_LOGO_ENABLE[0].toString(), commands.SHOW_LOGO_ENABLE[1]);
 					controllerVariables.logoEnabled = true;
-
 				} else if (action === 'disable') {
 					await sendOSCCommand(instance, commands.SHOW_LOGO_DISABLE[0].toString(), commands.SHOW_LOGO_DISABLE[1]);
 					controllerVariables.logoEnabled = false;
-
 				} else if (action === 'toggle') {
 					if (controllerVariables.logoEnabled) {
 						await sendOSCCommand(instance, commands.SHOW_LOGO_DISABLE[0].toString(), commands.SHOW_LOGO_DISABLE[1]);
 						controllerVariables.logoEnabled = false;
-			
 					} else {
 						await sendOSCCommand(instance, commands.SHOW_LOGO_ENABLE[0].toString(), commands.SHOW_LOGO_ENABLE[1]);
 						controllerVariables.logoEnabled = true;
-			
 					}
 				}
 
 				instance.checkFeedbacks('logo');
-
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'logo';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1357,14 +1582,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'logo';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.set_framerate]: {
-            name: 'Frame Rate',
+			name: 'Frame Rate',
 			description: 'Control the Frame Rate',
-            options: [
+			options: [
 				{
 					id: 'framerate',
 					type: 'dropdown',
@@ -1380,7 +1605,7 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: '60', label: '60' },
 					],
 					default: '25',
-				}
+				},
 			],
 			learn: (ev) => {
 				const frameRate = controllerVariables.frameRate;
@@ -1392,10 +1617,9 @@ export function UpdateActions(instance: RCVInstance): void {
 				return {
 					...ev.options,
 					framerate: frameRate.toString(),
-				}
-			
+				};
 			},
-            callback: async (ev, context) => {
+			callback: async (ev, context) => {
 				const action = ev.options.framerate as string;
 
 				if (frameRateList.hasOwnProperty(action)) {
@@ -1407,16 +1631,16 @@ export function UpdateActions(instance: RCVInstance): void {
 				controllerVariables.frameRate = action;
 
 				instance.setVariableValues({
-					'frame_rate': controllerVariables.frameRate.toString(),
+					frame_rate: controllerVariables.frameRate.toString(),
 				});
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'set_framerate';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1424,20 +1648,20 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'set_framerate';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.keying]: {
-            name: 'Keying',
+			name: 'Keying',
 			description: 'Trigger keying for inputs',
-            options: [
+			options: [
 				{
 					id: 'control',
 					type: 'dropdown',
 					label: 'Input',
-					choices: inputButtonChoices,
-					default: inputButtonChoices[0]?.id
+					choices: getButtonChoices(buttonPressInputsType),
+					default: getButtonChoices(buttonPressInputsType)[0]?.id,
 				},
 				{
 					id: 'action',
@@ -1459,15 +1683,21 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'luma', label: 'Luma' },
 					],
 					default: 'chroma',
-					isVisible: (options) => { return options.action !== 'disable'; }
+					isVisible: (options) => {
+						return options.action !== 'disable';
+					},
+					isVisibleExpression: "$(options:action) === 'disable'",
 				},
 				{
 					id: 'keying_source',
 					type: 'dropdown',
 					label: 'Background',
-					choices: keySourceChoices,
-					default: keySourceChoices[0]?.id,
-					isVisible: (options) => { return options.keying_type !== 'none' && options.action !== 'disable'; }
+					choices: getkeySourceChoices(),
+					default: getkeySourceChoices()[0]?.id,
+					isVisible: (options) => {
+						return options.keying_type !== 'none' && options.action !== 'disable';
+					},
+					isVisibleExpression: "$(options:keying_type) !== 'none' && $(options:action) !== 'disable'",
 				},
 				{
 					id: 'keying_col',
@@ -1478,78 +1708,74 @@ export function UpdateActions(instance: RCVInstance): void {
 						{ id: 'blue', label: 'Blue' },
 					],
 					default: 'green',
-					isVisible: (options) => { return options.keying_type === 'chroma' && options.action !== 'disable'; }
-				}
+					isVisible: (options) => {
+						return options.keying_type === 'chroma' && options.action !== 'disable';
+					},
+					isVisibleExpression: "$(options:keying_type) === 'chroma' && $(options:action) !== 'disable'",
+				},
 			],
-            callback: async (ev, context) => {
-
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
 				const value = ev.options.control as buttonPressInputsType;
 				const keying_type = ev.options.keying_type as string;
 				const keying_col = ev.options.keying_col as string;
 				const action = ev.options.action as string;
-				const keying_source = ev.options.keying_source as buttonPressInputsType | buttonPressMediaType | string;;
+				const keying_source = ev.options.keying_source as buttonPressInputsType | buttonPressMediaType | string;
 
 				if (value && buttonList.hasOwnProperty(value)) {
 					const button = buttonList[value];
 
 					if (action === 'enable' || (action == 'toggle' && button.keyingMode === keyingMode.NONE)) {
-
 						if (keying_type === 'chroma') {
-							await sendOSCCommand(instance, `/videoIn/${button.id+1}/key_mode`, keyingMode.CHROMA);
+							await sendOSCCommand(instance, `/videoIn/${button.id + 1}/key_mode`, keyingMode.CHROMA);
 							buttonList[value].keyingMode = keyingMode.CHROMA;
-						
+
 							if (keying_col === 'green') {
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.GREEN);
+								await sendOSCCommand(instance, `/videoIn/${button.id + 1}/chroma_key_colour`, keyingCol.GREEN);
 								buttonList[value].keyingCol = keyingCol.GREEN;
-							} if (keying_col === 'blue') {
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/chroma_key_colour`, keyingCol.BLUE);
+							}
+							if (keying_col === 'blue') {
+								await sendOSCCommand(instance, `/videoIn/${button.id + 1}/chroma_key_colour`, keyingCol.BLUE);
 								buttonList[value].keyingCol = keyingCol.BLUE;
 							}
 						} else if (keying_type === 'luma') {
-							await sendOSCCommand(instance, `/videoIn/${button.id+1}/key_mode`, keyingMode.LUMA);
+							await sendOSCCommand(instance, `/videoIn/${button.id + 1}/key_mode`, keyingMode.LUMA);
 							buttonList[value].keyingMode = keyingMode.LUMA;
 						}
 
 						if (keying_source) {
 							if (keying_source === 'transparent') {
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, '');
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/source_file`, '');
-
+								await sendOSCCommand(instance, `/videoIn/${button.id + 1}/bkg_source`, '');
+								await sendOSCCommand(instance, `/videoIn/${button.id + 1}/source_file`, '');
 							} else if (buttonList.hasOwnProperty(keying_source)) {
 								const source = buttonList[keying_source];
 
-								if (source.optgroup === "Media") {
-									await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'mediaButton');
-	
-								} else if (source.optgroup === "Inputs") {
-									await sendOSCCommand(instance, `/videoIn/${button.id+1}/bkg_source`, 'videoInput');
-	
+								if (source.optgroup === 'Media') {
+									await sendOSCCommand(instance, `/videoIn/${button.id + 1}/bkg_source`, 'mediaButton');
+								} else if (source.optgroup === 'Inputs') {
+									await sendOSCCommand(instance, `/videoIn/${button.id + 1}/bkg_source`, 'videoInput');
 								}
-	
-								await sendOSCCommand(instance, `/videoIn/${button.id+1}/source_file`, `${source.id+1}`);
+
+								await sendOSCCommand(instance, `/videoIn/${button.id + 1}/source_file`, `${source.id + 1}`);
 							}
 						}
-						
-
 					} else if (action === 'disable' || (action == 'toggle' && button.keyingMode !== keyingMode.NONE)) {
-
-						await sendOSCCommand(instance, `/videoIn/${button.id+1}/key_mode`, keyingMode.NONE);
+						await sendOSCCommand(instance, `/videoIn/${button.id + 1}/key_mode`, keyingMode.NONE);
 						buttonList[value].keyingMode = keyingMode.NONE;
 					}
 
 					instance.checkFeedbacks('keying');
-
 				} else {
 					ConsoleLog(instance, `Invalid input button: ${value}`, LogLevel.ERROR, false);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'keying';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1557,63 +1783,43 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'keying';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.routing]: {
-            name: 'Video Outputs',
+			name: 'Video Outputs',
 			description: 'Control video outputs',
-            options: [
+			options: [
 				{
 					id: 'output',
 					type: 'dropdown',
 					label: 'Output',
-					choices: [
-						{ id: 'outputA', label: 'HDMI A' },
-						{ id: 'outputB', label: 'HDMI B' },
-						{ id: 'outputUVC1', label: 'USB 1' },
-						{ id: 'outputNDI1', label: 'NDI' },
-					],
+					choices: getroutingOutputChoices(),
 					default: 'outputA',
 				},
 				{
 					id: 'source1',
 					type: 'dropdown',
 					label: 'Source',
-					choices: [
-						{ id: 'program', label: 'Program' },
-						{ id: 'preview', label: 'Preview' },
-						{ id: 'multi', label: 'Multiview' },
-						{ id: 'camera1', label: 'Camera 1' },
-						{ id: 'camera2', label: 'Camera 2' },
-						{ id: 'camera3', label: 'Camera 3' },
-						{ id: 'camera4', label: 'Camera 4' },
-						{ id: 'camera5', label: 'Camera 5' },
-						{ id: 'camera6', label: 'Camera 6' },
-					],
+					choices: getroutingInputChoices(),
 					default: 'multi',
-					isVisible: (options) => { return options.output !== 'outputNDI1' },
+					isVisible: (options) => {
+						return options.output !== 'outputNDI1';
+					},
+					isVisibleExpression: "$(options:output) !== 'outputNDI1'",
 				},
 				{
 					id: 'source2',
 					type: 'dropdown',
 					label: 'Source',
-					choices: [
-						{ id: 'off', label: 'Off' },
-						{ id: 'program', label: 'Program' },
-						{ id: 'preview', label: 'Preview' },
-						{ id: 'multi', label: 'Multiview' },
-						{ id: 'camera1', label: 'Camera 1' },
-						{ id: 'camera2', label: 'Camera 2' },
-						{ id: 'camera3', label: 'Camera 3' },
-						{ id: 'camera4', label: 'Camera 4' },
-						{ id: 'camera5', label: 'Camera 5' },
-						{ id: 'camera6', label: 'Camera 6' },
-					],
+					choices: [{ id: 'off', label: 'Off' }, ...getroutingInputChoices()],
 					default: 'multi',
-					isVisible: (options) => { return options.output === 'outputNDI1' },
-				}
+					isVisible: (options) => {
+						return options.output === 'outputNDI1';
+					},
+					isVisibleExpression: "$(options:output) === 'outputNDI1'",
+				},
 			],
 
 			learn: (ev) => {
@@ -1627,50 +1833,42 @@ export function UpdateActions(instance: RCVInstance): void {
 
 				if (output === routingOutputs.HDMI_A) {
 					source1 = controllerVariables.hdmi_A_output;
-
 				} else if (output === routingOutputs.HDMI_B) {
 					source1 = controllerVariables.hdmi_B_output;
-					
 				} else if (output === routingOutputs.UVC_1) {
 					source1 = controllerVariables.uvc_1_output;
-					
 				} else if (output === routingOutputs.NDI_1) {
 					source2 = controllerVariables.ndi_1_output;
-					
 				}
 
 				return {
 					...ev.options,
 					source1: source1.toString(),
-					source2: source2.toString()
-				}
-			
+					source2: source2.toString(),
+				};
 			},
-            callback: async (ev, context) => {
+			callback: async (ev, context) => {
 				const output = ev.options.output as routingOutputs;
 				const source1 = ev.options.source1 as routingSources;
 				const source2 = ev.options.source2 as routingSources;
 
 				if (output === routingOutputs.HDMI_A) {
 					await sendOSCCommand(instance, commands.HDMI_A_OUTPUT[0].toString(), source1);
-
 				} else if (output === routingOutputs.HDMI_B) {
 					await sendOSCCommand(instance, commands.HDMI_B_OUTPUT[0].toString(), source1);
-
 				} else if (output === routingOutputs.UVC_1) {
 					await sendOSCCommand(instance, commands.UVC_1_OUTPUT[0].toString(), source1);
 				} else if (output === routingOutputs.NDI_1) {
 					await sendOSCCommand(instance, commands.NDI_1_OUTPUT[0].toString(), source2);
 				}
-
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'routing';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1678,10 +1876,10 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'routing';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		/*
 		[ActionId.set_monitors]: {
             name: 'Monitor Levels',
@@ -1718,7 +1916,8 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.mechanism === 'relative'; }
+					isVisible: (options) => { return options.mechanism === 'relative'; },
+					isVisibleExpression: "$(options:mechanism) === 'relative'"
 				},
 				{
 					id: 'level',
@@ -1730,7 +1929,8 @@ export function UpdateActions(instance: RCVInstance): void {
 					step: 1,
 					range: true,
 					required: true,
-					isVisible: (options) => { return options.mechanism === 'set'; }
+					isVisible: (options) => { return options.mechanism === 'set'; },
+					isVisibleExpression: "$(options:mechanism) === 'set'"
 				},
 			],
 			learn: (ev) => {
@@ -1806,7 +2006,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					const type = 'set_monitors';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -1814,35 +2014,33 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'set_monitors';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			}
         },
 		*/
 		[ActionId.setMedia]: {
-            name: 'Set Media Bank',
+			name: 'Set Media Bank',
 			description: 'Change Media bank settings',
-            options: [
+			options: [
 				{
 					id: 'media',
 					type: 'textinput',
 					label: 'Filename',
-					useVariables: true
+					useVariables: true,
 				},
 				{
 					id: 'important-line',
 					type: 'static-text',
 					label: '',
-					value: 'Filename must be an exact match (including extension) from the SD card/Central'
+					value: 'Filename must be an exact match (including extension) from the SD card/Central',
 				},
 				{
 					id: 'bank',
 					type: 'dropdown',
 					label: 'Bank',
-					choices: [
-						...mediaButtonChoices
-					],  
-					default: mediaButtonChoices[0]?.id
+					choices: [...getButtonChoices(buttonPressMediaType)],
+					default: getButtonChoices(buttonPressMediaType)[0]?.id,
 				},
 				{
 					id: 'playback',
@@ -1851,7 +2049,7 @@ export function UpdateActions(instance: RCVInstance): void {
 					choices: [
 						{ id: 'once', label: 'Once' },
 						{ id: 'loop', label: 'Loop' },
-						{ id: 'switch', label: 'Switch To' }
+						{ id: 'switch', label: 'Switch To' },
 					],
 					default: 'once',
 				},
@@ -1860,16 +2058,20 @@ export function UpdateActions(instance: RCVInstance): void {
 					type: 'dropdown',
 					label: 'Switch to',
 					choices: [
-						...inputButtonChoices,
-						...sceneButtonChoices,
-						...mediaButtonChoices
-					],  
-					default: inputButtonChoices[0]?.id,
-					isVisible: (options) => { return options.playback === 'switch'; }
-				}
+						...getButtonChoices(buttonPressInputsType),
+						...getButtonChoices(buttonPressSceneType),
+						...getButtonChoices(buttonPressMediaType),
+					],
+					default: getButtonChoices(buttonPressInputsType)[0]?.id,
+					isVisible: (options) => {
+						return options.playback === 'switch';
+					},
+					isVisibleExpression: "$(options:playback) === 'switch'",
+				},
 			],
-            callback: async (ev, context) => {
-				const media = await context.parseVariablesInString(ev.options.media.toString()) as string;
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
+				const media = (await context.parseVariablesInString(ev.options.media.toString())) as string;
 				const playback = ev.options.playback as string;
 				const _bank = ev.options.bank as buttonPressMediaType;
 				const _switchto = ev.options.switchto as buttonPressInputsType | buttonPressSceneType | buttonPressMediaType;
@@ -1877,7 +2079,7 @@ export function UpdateActions(instance: RCVInstance): void {
 				let switchto;
 
 				if (_bank) {
-					switch(_bank) {
+					switch (_bank) {
 						case buttonPressMediaType.MEDIA_1:
 							bank = '1';
 							break;
@@ -1905,7 +2107,7 @@ export function UpdateActions(instance: RCVInstance): void {
 				}
 
 				if (_switchto) {
-					switch(_switchto) {
+					switch (_switchto) {
 						case buttonPressInputsType.INPUT_1:
 							switchto = 'videoIn@0';
 							break;
@@ -1985,14 +2187,14 @@ export function UpdateActions(instance: RCVInstance): void {
 				} else {
 					ConsoleLog(instance, 'Bank not found', LogLevel.ERROR);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'setMedia';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
@@ -2000,34 +2202,72 @@ export function UpdateActions(instance: RCVInstance): void {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'setMedia';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
+			},
+		},
 		[ActionId.setOverlay]: {
-            name: 'Set Overlay Bank',
+			name: 'Set Overlay Bank',
 			description: 'Change Overlay bank settings',
-            options: [
+			options: [
+				{
+					id: 'type',
+					type: 'dropdown',
+					label: 'Overlay Type',
+					choices: [
+						{ id: 'file', label: 'File' },
+						{ id: 'input', label: 'Input' },
+					],
+					default: 'file',
+				},
+				/*
+				{
+					id: 'overlay_list',
+					type: 'dropdown',
+					label: 'Filename',
+					choices: getMediaSourcesChoices(mediaType.IMAGE),
+					default: getMediaSourcesChoices(mediaType.IMAGE)[0]?.id,
+					isVisible: (options) => { return options.type === 'file'; },
+					isVisibleExpression: "$(options:type) === 'file'"
+				},
+				*/
 				{
 					id: 'overlay',
 					type: 'textinput',
 					label: 'Filename',
-					useVariables: true
+					useVariables: true,
+					isVisible: (options) => {
+						return options.type === 'file';
+					},
+					isVisibleExpression: "$(options:type) === 'file'",
 				},
 				{
 					id: 'important-line',
 					type: 'static-text',
 					label: '',
-					value: 'Filename must be an exact match (including extension) from the SD card/Central'
+					value: 'Filename must be an exact match (including extension) from the SD card/Central',
+					isVisible: (options) => {
+						return options.type === 'file';
+					},
+					isVisibleExpression: "$(options:type) === 'file'",
 				},
 				{
 					id: 'bank',
 					type: 'dropdown',
 					label: 'Bank',
-					choices: [
-						...overlayButtonChoices
-					],  
-					default: overlayButtonChoices[0]?.id
+					choices: [...getButtonChoices(buttonPressOverlayType)],
+					default: getButtonChoices(buttonPressOverlayType)[0]?.id,
+				},
+				{
+					id: 'input',
+					type: 'dropdown',
+					label: 'Input Source',
+					choices: [...getkeySourceChoices()],
+					default: getkeySourceChoices()[0]?.id,
+					isVisible: (options) => {
+						return options.type === 'input';
+					},
+					isVisibleExpression: "$(options:type) === 'input'",
 				},
 				{
 					id: 'transition',
@@ -2043,16 +2283,22 @@ export function UpdateActions(instance: RCVInstance): void {
 					id: 'time',
 					type: 'textinput',
 					label: 'Transition Time (ms)',
-					default: "0",
+					default: '0',
 					required: true,
 					useVariables: true,
-					isVisible: (options) => { return options.transition === 'fade'; }
+					isVisible: (options) => {
+						return options.transition === 'fade';
+					},
+					isVisibleExpression: "$(options:transition) === 'fade'",
 				},
 			],
-            callback: async (ev, context) => {
-				const overlay = await context.parseVariablesInString(ev.options.overlay.toString()) as string;
+			skipUnsubscribeOnOptionsChange: false, // Used to refresh media bank list
+			callback: async (ev, context) => {
+				const type = ev.options.type as string;
+				const overlay = (await context.parseVariablesInString(ev.options.overlay.toString())) as string;
 				const transition = ev.options.transition as string;
 				const varTimeString = await context.parseVariablesInString(ev.options.time.toString());
+				const input = ev.options.input as buttonPressInputsType;
 				const time = Number(varTimeString);
 
 				const _bank = ev.options.bank as buttonPressOverlayType;
@@ -2060,7 +2306,7 @@ export function UpdateActions(instance: RCVInstance): void {
 				let switchto;
 
 				if (_bank) {
-					switch(_bank) {
+					switch (_bank) {
 						case buttonPressOverlayType.OVERLAY_1:
 							bank = '1';
 							break;
@@ -2088,8 +2334,47 @@ export function UpdateActions(instance: RCVInstance): void {
 				}
 
 				if (bank) {
-					await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/name`, overlay);
-					await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/file_path`, overlay);
+					if (type === 'file') {
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/name`, overlay);
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/file_path`, overlay);
+					} else if (type === 'input') {
+						let _input;
+						let _sourceIndex;
+
+						switch (input) {
+							case buttonPressInputsType.INPUT_1:
+								_input = '1';
+								_sourceIndex = 0;
+								break;
+							case buttonPressInputsType.INPUT_2:
+								_input = '2';
+								_sourceIndex = 1;
+								break;
+							case buttonPressInputsType.INPUT_3:
+								_input = '3';
+								_sourceIndex = 2;
+								break;
+							case buttonPressInputsType.INPUT_4:
+								_input = '4';
+								_sourceIndex = 3;
+								break;
+							case buttonPressInputsType.INPUT_5:
+								_input = '5';
+								_sourceIndex = 4;
+								break;
+							case buttonPressInputsType.INPUT_6:
+								_input = '6';
+								_sourceIndex = 5;
+								break;
+							default:
+								_input = '1';
+								_sourceIndex = 0;
+						}
+
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/name`, videoSources[_sourceIndex].name || '');
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/source`, 'videoInput');
+						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/source_file`, _input);
+					}
 
 					if (transition === 'fade' && time) {
 						await sendOSCCommand(instance, `/show/OverlayFiles/${bank}/transition`, 'fade');
@@ -2100,24 +2385,343 @@ export function UpdateActions(instance: RCVInstance): void {
 				} else {
 					ConsoleLog(instance, 'Bank not found', LogLevel.ERROR);
 				}
-            },
+			},
 
 			subscribe: (feedback) => {
 				if (!instance.actions.hasOwnProperty(feedback.id)) {
 					const type = 'setOverlay';
 
 					instance.actions[feedback.id] = type;
-					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+
+			unsubscribe: (feedback, context) => {
+				if (instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setOverlay';
+					delete instance.actions[feedback.id];
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+
+					instance.sendShowRefresh();
+				}
+			},
+		},
+		[ActionId.setInput]: {
+			name: 'Video Inputs',
+			description: 'Control video inputs',
+			options: [
+				{
+					id: 'input',
+					type: 'dropdown',
+					label: 'Input',
+					choices: getkeySourceChoices(),
+					default: getkeySourceChoices()[0]?.id,
+				},
+				{
+					id: 'source',
+					type: 'dropdown',
+					label: 'Source',
+					choices: getsourceInputChoices(),
+					default: 'none',
+				},
+				{
+					id: 'ndi_device',
+					type: 'textinput',
+					label: 'NDI Device Name',
+					useVariables: true,
+					isVisible: (options) => {
+						return (
+							options.source === 'network1' ||
+							options.source === 'network2' ||
+							options.source === 'network3' ||
+							options.source === 'network4'
+						);
+					},
+					isVisibleExpression:
+						"$(options:source) === 'network1' || $(options:source) === 'network2' || $(options:source) === 'network3' || $(options:source) === 'network4'",
+				},
+				{
+					id: 'important-line',
+					type: 'static-text',
+					label: '',
+					value:
+						'NDI Device Name must match the format: "<DEVICE-NAME>". For Example: "MACBOOK-PRO.LOCAL (Test Patterns)"',
+					isVisible: (options) => {
+						return (
+							options.source === 'network1' ||
+							options.source === 'network2' ||
+							options.source === 'network3' ||
+							options.source === 'network4'
+						);
+					},
+					isVisibleExpression:
+						"$(options:source) === 'network1' || $(options:source) === 'network2' || $(options:source) === 'network3' || $(options:source) === 'network4'",
+				},
+				{
+					id: 'ndi_ip',
+					type: 'textinput',
+					label: 'NDI Device IP Address',
+					useVariables: true,
+					regex: Regex.IP,
+					isVisible: (options) => {
+						return (
+							options.source === 'network1' ||
+							options.source === 'network2' ||
+							options.source === 'network3' ||
+							options.source === 'network4'
+						);
+					},
+					isVisibleExpression:
+						"$(options:source) === 'network1' || $(options:source) === 'network2' || $(options:source) === 'network3' || $(options:source) === 'network4'",
+				},
+			],
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
+				const _bank = ev.options.input as buttonPressInputsType;
+				const _source = (await context.parseVariablesInString(ev.options.source.toString())) as string;
+				const ndi_device = (await context.parseVariablesInString(ev.options.ndi_device.toString())) as string;
+				const ndi_ip = (await context.parseVariablesInString(ev.options.ndi_ip.toString())) as string;
+
+				let bank;
+				let source;
+				let sub_source;
+				let ndi_source;
+
+				if (_bank) {
+					switch (_bank) {
+						case buttonPressInputsType.INPUT_1:
+							bank = '1';
+							break;
+						case buttonPressInputsType.INPUT_2:
+							bank = '2';
+							break;
+						case buttonPressInputsType.INPUT_3:
+							bank = '3';
+							break;
+						case buttonPressInputsType.INPUT_4:
+							bank = '4';
+							break;
+						case buttonPressInputsType.INPUT_5:
+							bank = '5';
+							break;
+						case buttonPressInputsType.INPUT_6:
+							bank = '6';
+							break;
+						default:
+							bank = null;
+					}
+				}
+
+				if (_source) {
+					switch (_source) {
+						case 'hdmi1':
+							source = 'hdmi';
+							sub_source = '1';
+							ndi_source = '';
+							break;
+						case 'hdmi2':
+							source = 'hdmi';
+							sub_source = '2';
+							ndi_source = '';
+							break;
+						case 'hdmi3':
+							source = 'hdmi';
+							sub_source = '3';
+							ndi_source = '';
+							break;
+						case 'hdmi4':
+							source = 'hdmi';
+							sub_source = '4';
+							ndi_source = '';
+							break;
+						case 'usb4':
+							source = 'uvc';
+							sub_source = '3';
+							ndi_source = '';
+							break;
+						case 'usb5':
+							source = 'uvc';
+							sub_source = '4';
+							ndi_source = '';
+							break;
+						case 'network1':
+							source = 'ndi';
+							sub_source = '1';
+							ndi_source = '0';
+							break;
+						case 'network2':
+							source = 'ndi';
+							sub_source = '2';
+							ndi_source = '1';
+							break;
+						case 'network3':
+							source = 'ndi';
+							sub_source = '3';
+							ndi_source = '2';
+							break;
+						case 'network4':
+							source = 'ndi';
+							sub_source = '4';
+							ndi_source = '3';
+						case 'none':
+						default:
+							source = 'none';
+							sub_source = '';
+							break;
+					}
+				}
+
+				if (bank && source) {
+					await sendOSCCommand(instance, `/videoIn/${bank}/source`, source);
+					await sendOSCCommand(instance, `/videoIn/${bank}/sub_source`, sub_source);
+
+					if (source === 'ndi' && ndi_source && ndi_device && ndi_ip) {
+						await sendOSCCommand(instance, `/show/ndisource/${ndi_source}/nameAndAddress`, ndi_device, ndi_ip);
+					}
+				} else {
+					ConsoleLog(instance, 'Input not found', LogLevel.ERROR);
+				}
+			},
+
+			subscribe: (feedback) => {
+				if (!instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'setInput';
+
+					instance.actions[feedback.id] = type;
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
 			},
 
 			unsubscribe: (feedback) => {
 				if (instance.actions.hasOwnProperty(feedback.id)) {
-					const type = 'setOverlay';
+					const type = 'setInput';
 					delete instance.actions[feedback.id];
-					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`);
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
 				}
-			}
-        },
-	})
+			},
+		},
+		[ActionId.switching_mode]: {
+			name: 'Switching Mode',
+			description: 'Control Switching Mode',
+			options: [
+				{
+					id: 'action',
+					type: 'dropdown',
+					label: 'Action',
+					choices: [
+						{ id: 'instant', label: 'Instant' },
+						{ id: 'studioLeft', label: 'Studio' },
+						{ id: 'toggle', label: 'Toggle' },
+					],
+					default: 'instant',
+				},
+			],
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
+				const action = ev.options.action as string;
+
+				if (action === 'toggle') {
+					if (controllerVariables.studioMode) {
+						await sendOSCCommand(instance, commands.SWITCHING_MODE[0].toString(), 'instant');
+					} else {
+						await sendOSCCommand(instance, commands.SWITCHING_MODE[0].toString(), 'studioLeft');
+					}
+				} else {
+					if (action === 'instant' || action === 'studioLeft') {
+						await sendOSCCommand(instance, commands.SWITCHING_MODE[0].toString(), action);
+					}
+				}
+			},
+
+			subscribe: (feedback) => {
+				if (!instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'switching_mode';
+
+					instance.actions[feedback.id] = type;
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+
+			unsubscribe: (feedback) => {
+				if (instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'switching_mode';
+					delete instance.actions[feedback.id];
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+		},
+		[ActionId.system]: {
+			name: 'System Commands',
+			description: 'Perform system actions, including shutdown and reboot',
+			options: [
+				{
+					id: 'control',
+					type: 'dropdown',
+					label: 'Command',
+					choices: [
+						{ id: 'refresh', label: 'Refresh State' },
+						{ id: 'shutdown', label: 'Shutdown' },
+						{ id: 'reboot', label: 'Reboot' },
+					],
+					default: 'refresh',
+				},
+				{
+					id: 'refresh-line',
+					type: 'static-text',
+					label: '',
+					value: 'Requests full state update from the RCV and refreshes module feedbacks & variables.',
+					isVisible: (options) => {
+						return options.control === 'refresh';
+					},
+					isVisibleExpression: "$(options:control) === 'refresh'",
+				},
+				{
+					id: 'important-line',
+					type: 'static-text',
+					label: '',
+					value: 'WARNING: Running this action will immediately execute the command on the device!',
+					isVisible: (options) => {
+						return options.control === 'shutdown' || options.control === 'reboot';
+					},
+					isVisibleExpression: "$(options:control) === 'shutdown' || $(options:control) === 'reboot'",
+				},
+			],
+			skipUnsubscribeOnOptionsChange: true,
+			callback: async (ev, context) => {
+				const control = ev.options.control as string;
+
+				switch (control) {
+					case 'refresh':
+						await sendOSCCommand(instance, commands.SHOW[0]);
+						await sendOSCCommand(instance, commands.REFRESH[0]);
+						break;
+					case 'shutdown':
+						await sendOSCCommand(instance, commands.SHUTDOWN[0].toString(), commands.SHUTDOWN[1]);
+						break;
+					case 'reboot':
+						await sendOSCCommand(instance, commands.REBOOT[0].toString(), commands.REBOOT[1]);
+						break;
+					default:
+						ConsoleLog(instance, `Unknown system command: ${control}`, LogLevel.ERROR, false);
+				}
+			},
+
+			subscribe: (feedback) => {
+				if (!instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'shutdown';
+
+					instance.actions[feedback.id] = type;
+					ConsoleLog(instance, `Creating button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+
+			unsubscribe: (feedback) => {
+				if (instance.actions.hasOwnProperty(feedback.id)) {
+					const type = 'shutdown';
+					delete instance.actions[feedback.id];
+					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+		},
+	});
 }

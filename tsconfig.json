@@ -1,11 +1,12 @@
 {
 	"extends": "@tsconfig/node22/tsconfig.json",
 	"include": ["src/**/*.ts", "typings/**/*.d.ts"],
-	"exclude": ["node_modules/**", "src/**/*spec.ts", "src/**/__tests__/*", "src/**/__mocks__/*"],
+	"exclude": ["node_modules/**", "src/**/*spec.ts", "src/**/__tests__/*", "src/**/__mocks__/*", "dist", "tests"],
 	"compilerOptions": {
 		"skipLibCheck": true,
 		"esModuleInterop": true,
-    	"allowSyntheticDefaultImports": true,
+		"allowSyntheticDefaultImports": true,
+		"rootDir": "src",
 		"outDir": "./dist",
 		"baseUrl": "./",
 		"paths": {
@@ -13,10 +14,8 @@
 		},
 		"strict": false,
 		"moduleResolution": "Bundler",
-		"customConditions": [
-			"node"
-		],
-		"module": "ES2022",
+		"customConditions": ["node"],
+		"module": "es2022",
 		"typeRoots": ["./node_modules/@types", "./typings"]
 	}
 }

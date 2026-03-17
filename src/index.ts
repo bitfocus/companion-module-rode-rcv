@@ -1,16 +1,23 @@
-import { InstanceBase, runEntrypoint, InstanceStatus, SomeCompanionConfigField, CompanionVariableDefinition } from '@companion-module/base'
-import { GetConfigFields, type ModuleConfig } from "./modules/config.js";
-import { UpdateActions } from './actions/actions.js'
-import { UpdateFeedbacks } from './feedbacks/feedbacks.js'
+import {
+	InstanceBase,
+	runEntrypoint,
+	InstanceStatus,
+	SomeCompanionConfigField,
+	CompanionVariableDefinition,
+} from '@companion-module/base';
+import { GetConfigFields, type ModuleConfig } from './modules/config.js';
+import { UpdateActions } from './actions/actions.js';
+import { UpdateFeedbacks } from './feedbacks/feedbacks.js';
 import { UpdateVariableDefinitions } from './variables/variables.js';
-import { UpgradeScripts } from './upgrade.js'
+import { UpgradeScripts } from './upgrade.js';
 import { checkOscClient, createClient, oscClientClose, sendOSCCommand } from './modules/oscController.js';
 import { commands } from './modules/commands.js';
 import { isValidIPAddress } from './helpers/commonHelpers.js';
 import { SetPresets } from './presets/presets.js';
-import { LogLevel, MetersChannel, MetersSubmix } from './modules/enums.js';
+import { LogLevel, MetersChannel, MetersSubmix, RCVModel } from './modules/enums.js';
 import { ConsoleLog } from './modules/logger.js';
 import { getAllChannels, requestMeterValues } from './helpers/metersHelper.js';
+import { getRCVInfo } from './helpers/connectionHelpers.js';
 
 export class RCVInstance extends InstanceBase<ModuleConfig> {
 	config!: ModuleConfig;
@@ -31,9 +38,8 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 		this.globalSettings = {};
 		this.moduleInit = false;
 		this.variables = [];
-		
 	}
- 
+
 	// Initialize the instance
 	async init(config: ModuleConfig): Promise<void> {
 		this.config = config;
@@ -47,15 +53,16 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 
 		this.updateStatus(InstanceStatus.Disconnected);
 
-		this.setupOscClient();
-
+		await this.setupOscClient();
 	}
 
-	setupOscClient(): void {
+	async setupOscClient(): Promise<void> {
 		if (!checkOscClient()) {
 			if (this.config.enableComs && this.config.ipAddress && isValidIPAddress(this.config.ipAddress)) {
 				this.updateStatus(InstanceStatus.Connecting);
 				createClient(this, this.config.ipAddress);
+
+				//await getRCVInfo(this, this.config.ipAddress);
 
 				setTimeout(() => {
 					this.sendInitCommands();
@@ -68,8 +75,6 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 
 					this.moduleInit = true;
 				}
-				
-
 			} else {
 				if (!this.config.ipAddress || !isValidIPAddress(this.config.ipAddress)) {
 					this.updateStatus(InstanceStatus.BadConfig);
@@ -88,7 +93,6 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 		}
 	}
 
-	
 	async setupMeterRequests(): Promise<void> {
 		const allChannels = getAllChannels();
 
@@ -97,8 +101,8 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 			instance: this,
 			mix: MetersSubmix.Live,
 			outputChannels: [MetersChannel.None],
-			inputChannels: [MetersChannel.None]
-		}).catch(err => {
+			inputChannels: [MetersChannel.None],
+		}).catch((err) => {
 			ConsoleLog(this, `Failed to request meter values: ${err}`, LogLevel.ERROR);
 		});
 	}
@@ -107,6 +111,12 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 		if (this.globalSettings.oscConnected) {
 			await sendOSCCommand(this, commands.REFRESH[0]);
 			await sendOSCCommand(this, commands.DEVICE[0]);
+		}
+	}
+
+	async sendShowRefresh(): Promise<void> {
+		if (this.globalSettings.oscConnected) {
+			await sendOSCCommand(this, commands.SHOW[0]);
 		}
 	}
 
@@ -141,7 +151,7 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 		}
 
 		if (config.enableComs && config.ipAddress) {
-			this.setupOscClient();
+			await this.setupOscClient();
 		} else {
 			if (!config.ipAddress) {
 				this.updateStatus(InstanceStatus.BadConfig);
@@ -156,7 +166,6 @@ export class RCVInstance extends InstanceBase<ModuleConfig> {
 
 		this.log('debug', 'destroy');
 	}
-
 }
 
 // Entry point for the module

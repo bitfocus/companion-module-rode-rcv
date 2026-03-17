@@ -1,25 +1,50 @@
 import { CompanionPresetDefinitions, combineRgb } from '@companion-module/base';
 import { RCVInstance } from '../index.js';
-import { filterButtonListByEnum } from '../helpers/commonHelpers.js';
-import { buttonList, channelList, Col_Black, Col_LightBlue, Col_PGM, Col_PVW, Col_Recording, Col_RecordReady, Col_Red, Col_Standby, Col_Streaming, Col_StreamReady, Col_Unavailable, Col_White } from '../modules/constants.js';
-import { audioChannels, buttonPressControlType, buttonPressInputsType, buttonPressMediaType, buttonPressOverlayType, buttonPressSceneType, buttonStates, LogLevel, MixerChannels, SubmixChannels, transitionType } from '../modules/enums.js';
+import { getaudioChannels, getButtons, getkeySourceButtons } from '../helpers/commonHelpers.js';
+import {
+	buttonList,
+	channelList,
+	Col_Black,
+	Col_LightBlue,
+	Col_PGM,
+	Col_PVW,
+	Col_Recording,
+	Col_RecordReady,
+	Col_Red,
+	Col_Standby,
+	Col_Streaming,
+	Col_StreamReady,
+	Col_Unavailable,
+	Col_White,
+	controllerVariables,
+} from '../modules/constants.js';
+import {
+	audioChannels,
+	buttonPressControlType,
+	buttonPressMediaType,
+	buttonPressOverlayType,
+	buttonPressSceneType,
+	buttonStates,
+	LogLevel,
+	SubmixChannels,
+	transitionType,
+} from '../modules/enums.js';
 import { ConsoleLog } from '../modules/logger.js';
 import { ActionId } from '../actions/actions.js';
 import { FeedbackId } from '../feedbacks/feedbacks.js';
 
-const presets: CompanionPresetDefinitions = {};
+let presets: CompanionPresetDefinitions = {};
 export async function SetPresets(instance: RCVInstance): Promise<void> {
+	presets = {};
 
 	//Populate Presets for Inputs
-	for (const [currentKey, currentButton] of Object.entries(filterButtonListByEnum(buttonList, buttonPressInputsType, [buttonPressInputsType.INPUT_FTP]))) {
+	for (const [currentKey, currentButton] of getkeySourceButtons()) {
 		const id = currentButton.id + 1;
 		const actionId = ActionId.inputs;
 		const feedbackId = FeedbackId.input_state;
 		const nameVar = `$(${instance.label}:input_${id}_name)`;
-		const resolvedVar = await instance.parseVariablesInString(nameVar);
 
 		if (currentButton) {
-			
 			presets[currentKey] = {
 				type: 'button',
 				category: currentButton.optgroup,
@@ -104,18 +129,16 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 			ConsoleLog(instance, `Added preset ${currentKey} to ${currentButton.optgroup} pool.`, LogLevel.INFO);
 		}
-	};
+	}
 
 	//Populate Presets for Scenes
-	for (const [currentKey, currentButton] of Object.entries(filterButtonListByEnum(buttonList, buttonPressSceneType))) {
+	for (const [currentKey, currentButton] of getButtons(buttonPressSceneType)) {
 		const id = currentButton.id + 1;
 		const actionId = ActionId.scenes;
 		const feedbackId = FeedbackId.scenes_state;
 		const nameVar = `$(${instance.label}:scene_${id}_name)`;
-		const resolvedVar = await instance.parseVariablesInString(nameVar);
 
 		if (currentButton) {
-			
 			presets[currentKey] = {
 				type: 'button',
 				category: currentButton.optgroup,
@@ -200,18 +223,16 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 			ConsoleLog(instance, `Added preset ${currentKey} to ${currentButton.optgroup} pool.`, LogLevel.INFO);
 		}
-	};
+	}
 
 	//Populate Presets for Media
-	for (const [currentKey, currentButton] of Object.entries(filterButtonListByEnum(buttonList, buttonPressMediaType))) {
+	for (const [currentKey, currentButton] of getButtons(buttonPressMediaType)) {
 		const id = currentButton.id + 1;
 		const actionId = ActionId.media;
 		const feedbackId = FeedbackId.media_state;
 		const nameVar = `$(${instance.label}:media_${id}_name)`;
-		const resolvedVar = await instance.parseVariablesInString(nameVar);
 
 		if (currentButton) {
-			
 			presets[currentKey] = {
 				type: 'button',
 				category: currentButton.optgroup,
@@ -296,18 +317,16 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 			ConsoleLog(instance, `Added preset ${currentKey} to ${currentButton.optgroup} pool.`, LogLevel.INFO);
 		}
-	};
+	}
 
 	//Populate Presets for Overlays
-	for (const [currentKey, currentButton] of Object.entries(filterButtonListByEnum(buttonList, buttonPressOverlayType))) {
+	for (const [currentKey, currentButton] of getButtons(buttonPressOverlayType)) {
 		const id = currentButton.id + 1;
 		const actionId = ActionId.overlays;
 		const feedbackId = FeedbackId.overlays_state;
 		const nameVar = `$(${instance.label}:overlay_${id}_name)`;
-		const resolvedVar = await instance.parseVariablesInString(nameVar);
 
 		if (currentButton) {
-			
 			presets[currentKey] = {
 				type: 'button',
 				category: currentButton.optgroup,
@@ -392,7 +411,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 			ConsoleLog(instance, `Added preset ${currentKey} to ${currentButton.optgroup} pool.`, LogLevel.INFO);
 		}
-	};
+	}
 
 	//Add Recording/Streaming
 	presets[buttonPressControlType.BUTTON_RECORD] = {
@@ -413,6 +432,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.control_buttons,
 						options: {
 							control: buttonPressControlType.BUTTON_RECORD,
+							mechanism: 'toggle',
 						},
 					},
 				],
@@ -439,7 +459,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 					color: Col_White,
 					bgcolor: Col_Recording,
 				},
-			}
+			},
 		],
 	};
 
@@ -461,6 +481,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.control_buttons,
 						options: {
 							control: buttonPressControlType.BUTTON_STREAM,
+							mechanism: 'toggle',
 						},
 					},
 				],
@@ -487,7 +508,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 					color: Col_White,
 					bgcolor: Col_Streaming,
 				},
-			}
+			},
 		],
 	};
 
@@ -509,6 +530,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.control_buttons,
 						options: {
 							control: buttonPressControlType.BUTTON_FTB,
+							mechanism: 'toggle',
 						},
 					},
 				],
@@ -565,7 +587,6 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 			},
 		],
-		
 	};
 
 	presets[buttonPressControlType.BUTTON_CUT] = {
@@ -586,6 +607,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.control_buttons,
 						options: {
 							control: buttonPressControlType.BUTTON_CUT,
+							mechanism: 'toggle',
 						},
 					},
 				],
@@ -593,7 +615,6 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 			},
 		],
 		feedbacks: [],
-		
 	};
 
 	presets[buttonPressControlType.BUTTON_AUTO] = {
@@ -614,6 +635,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.control_buttons,
 						options: {
 							control: buttonPressControlType.BUTTON_AUTO,
+							mechanism: 'toggle',
 						},
 					},
 				],
@@ -643,7 +665,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 					bgcolor: Col_LightBlue,
 				},
 			},
-		]
+		],
 	};
 
 	presets['AutoSwitching'] = {
@@ -682,7 +704,6 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 			},
 		],
-		
 	};
 
 	presets['ChangeTransition'] = {
@@ -703,7 +724,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						actionId: ActionId.transitions,
 						options: {
 							action: 'transition',
-							transition: transitionType.FADE
+							transition: transitionType.FADE,
 						},
 					},
 				],
@@ -711,13 +732,11 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 			},
 		],
 		feedbacks: [],
-		
 	};
-	
 
 	//Audio Source
 
-	for (const [channel, channelEntry] of Object.entries(channelList)) {
+	for (const [channel, channelEntry] of getaudioChannels()) {
 		const actionId = ActionId.audio_sources;
 
 		if (channel) {
@@ -742,6 +761,16 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 									channel: channel as audioChannels,
 									submix: SubmixChannels.LIVE,
 									action: 'mute',
+									action_sync: 'mute',
+									mechanism: 'set',
+									volume_value: 0,
+									gain_value: 0,
+									fade_time: 0,
+									relative_value: 0,
+									volume_value_var: '0',
+									gain_value_var: '0',
+									fade_time_var: '0',
+									variable: false,
 								},
 							},
 						],
@@ -754,8 +783,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						options: {
 							channel: channel as audioChannels,
 							orientation: 'vertical',
-							position: 'br'
-						}
+							position: 'br',
+						},
 					},
 					{
 						feedbackId: FeedbackId.audio_sources,
@@ -763,7 +792,14 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 							channel: channel as audioChannels,
 							submix: SubmixChannels.LIVE,
 							action: 'mute',
-							muted_value: true
+							muted_value: true,
+							variable: false,
+							comparison: 'equal',
+							volume_value: 0,
+							gain_value: 0,
+							volume_value_var: '0',
+							gain_value_var: '0',
+							scmuted_value: false,
 						},
 						style: {
 							bgcolor: Col_Red,
@@ -775,7 +811,7 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 
 			ConsoleLog(instance, `Added preset ${channelEntry.title} to Audio Sources pool.`, LogLevel.INFO);
 		}
-	};
+	}
 
 	instance.setPresetDefinitions(presets);
 }
