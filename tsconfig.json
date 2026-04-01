@@ -8,10 +8,6 @@
 		"allowSyntheticDefaultImports": true,
 		"rootDir": "src",
 		"outDir": "./dist",
-		"baseUrl": "./",
-		"paths": {
-			"*": ["./node_modules/*"]
-		},
 		"strict": false,
 		"moduleResolution": "Bundler",
 		"customConditions": ["node"],
