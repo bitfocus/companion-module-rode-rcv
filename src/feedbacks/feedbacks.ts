@@ -17,12 +17,14 @@ import {
 	Col_PVW,
 	Col_White,
 	controllerVariables,
+	DEFAULT_BLACK_PNG64,
 	mediaSources,
 	mixerChannels,
 	mixList,
 	overlaySources,
 	rcvPhysicalButtons,
 	sceneSources,
+	transitionsList,
 	videoSources,
 } from '../modules/constants.js';
 import {
@@ -53,6 +55,7 @@ import { companionMeter, meterLevelToPercentage } from '../helpers/metersHelper.
 import { graphics, presets } from 'companion-module-utils/dist/index.js';
 import { rect, stackImage } from 'companion-module-utils/dist/graphics.js';
 import { PresetBox, PresetOptionsBoxes } from 'companion-module-utils/dist/presets.js';
+import { svgPathToCachedPng64 } from '../helpers/imageHelpers.js';
 
 export enum FeedbackId {
 	control_state = 'control_state',
@@ -70,6 +73,7 @@ export enum FeedbackId {
 	meters = 'meters',
 	visualSwitcher = 'visualSwitcher',
 	switching_mode = 'switching_mode',
+	transitions = 'transitions',
 }
 
 export function UpdateFeedbacks(instance: RCVInstance): void {
@@ -1663,6 +1667,41 @@ export function UpdateFeedbacks(instance: RCVInstance): void {
 					(value === 'instant' && !controllerVariables.studioMode) ||
 					(value === 'studioLeft' && controllerVariables.studioMode)
 				);
+			},
+		},
+		[FeedbackId.transitions]: {
+			name: 'Current Transition',
+			type: 'advanced',
+			description: 'Set the icon to the currently seleected transition',
+			defaultStyle: {
+				color: combineRgb(255, 255, 255),
+				pngalignment: 'center:center',
+			},
+			options: [],
+			callback: async (feedback, context) => {
+				const currentTransition = controllerVariables.currentTransition;
+				const mirror = !controllerVariables.transitionInvert;
+
+				if (!currentTransition) {
+					return {};
+				}
+
+				const transition = transitionsList[currentTransition];
+
+				if (!transition) {
+					return {};
+				}
+
+				const png64 = await svgPathToCachedPng64(instance, `${mirror ? transition.icon : transition.mirror_icon}`);
+
+				if (!png64) {
+					return {};
+				}
+
+				return {
+					png64: png64,
+					pngalignment: 'center:center',
+				};
 			},
 		},
 	};

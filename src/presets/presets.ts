@@ -17,10 +17,12 @@ import {
 	Col_Unavailable,
 	Col_White,
 	controllerVariables,
+	DEFAULT_BLACK_PNG64,
 } from '../modules/constants.js';
 import {
 	audioChannels,
 	buttonPressControlType,
+	buttonPressInputsType,
 	buttonPressMediaType,
 	buttonPressOverlayType,
 	buttonPressSceneType,
@@ -32,6 +34,7 @@ import {
 import { ConsoleLog } from '../modules/logger.js';
 import { ActionId } from '../actions/actions.js';
 import { FeedbackId } from '../feedbacks/feedbacks.js';
+import { svgPathToCachedPng64 } from '../helpers/imageHelpers.js';
 
 let presets: CompanionPresetDefinitions = {};
 export async function SetPresets(instance: RCVInstance): Promise<void> {
@@ -50,10 +53,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				category: currentButton.optgroup,
 				name: currentButton.title,
 				style: {
-					text: currentButton.title,
+					text: '',
 					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
+					png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+					pngalignment: 'center:center',
 				},
 				steps: [
 					{
@@ -82,7 +87,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PGM,
+							png64: await svgPathToCachedPng64(instance, currentButton.state1_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -95,7 +101,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PVW,
+							png64: await svgPathToCachedPng64(instance, currentButton.state2_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -108,7 +115,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Standby,
+							png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -121,7 +129,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Unavailable,
+							png64: await svgPathToCachedPng64(instance, currentButton.state3_image),
+							pngalignment: 'center:center',
 						},
 					},
 				],
@@ -144,10 +153,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				category: currentButton.optgroup,
 				name: currentButton.title,
 				style: {
-					text: currentButton.title,
+					text: '',
 					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
+					png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+					pngalignment: 'center:center',
 				},
 				steps: [
 					{
@@ -176,7 +187,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PGM,
+							png64: await svgPathToCachedPng64(instance, currentButton.state1_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -189,7 +201,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PVW,
+							png64: await svgPathToCachedPng64(instance, currentButton.state2_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -202,7 +215,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Standby,
+							png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -215,7 +229,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Unavailable,
+							png64: await svgPathToCachedPng64(instance, currentButton.state3_image),
+							pngalignment: 'center:center',
 						},
 					},
 				],
@@ -238,10 +253,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				category: currentButton.optgroup,
 				name: currentButton.title,
 				style: {
-					text: currentButton.title,
+					text: '',
 					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
+					png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+					pngalignment: 'center:center',
 				},
 				steps: [
 					{
@@ -270,7 +287,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PGM,
+							png64: await svgPathToCachedPng64(instance, currentButton.state1_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -283,7 +301,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PVW,
+							png64: await svgPathToCachedPng64(instance, currentButton.state2_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -296,7 +315,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Standby,
+							png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -309,7 +329,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Unavailable,
+							png64: await svgPathToCachedPng64(instance, currentButton.state3_image),
+							pngalignment: 'center:center',
 						},
 					},
 				],
@@ -332,10 +353,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				category: currentButton.optgroup,
 				name: currentButton.title,
 				style: {
-					text: currentButton.title,
+					text: '',
 					size: '14',
 					color: Col_White,
 					bgcolor: Col_Black,
+					png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+					pngalignment: 'center:center',
 				},
 				steps: [
 					{
@@ -364,7 +387,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PGM,
+							png64: await svgPathToCachedPng64(instance, currentButton.state1_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -377,7 +401,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_PVW,
+							png64: await svgPathToCachedPng64(instance, currentButton.state2_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -390,7 +415,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Standby,
+							png64: await svgPathToCachedPng64(instance, currentButton.state0_image),
+							pngalignment: 'center:center',
 						},
 					},
 					{
@@ -403,7 +429,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 						},
 						style: {
 							color: Col_White,
-							bgcolor: Col_Unavailable,
+							png64: await svgPathToCachedPng64(instance, currentButton.state3_image),
+							pngalignment: 'center:center',
 						},
 					},
 				],
@@ -419,10 +446,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: buttonList[buttonPressControlType.BUTTON_RECORD].optgroup,
 		name: buttonList[buttonPressControlType.BUTTON_RECORD].title,
 		style: {
-			text: buttonList[buttonPressControlType.BUTTON_RECORD].title,
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_RECORD].state0_image),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -447,7 +476,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_RecordReady,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_RECORD].state0_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -457,7 +487,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_Recording,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_RECORD].state1_image),
+					pngalignment: 'center:center',
 				},
 			},
 		],
@@ -468,10 +499,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: buttonList[buttonPressControlType.BUTTON_STREAM].optgroup,
 		name: buttonList[buttonPressControlType.BUTTON_STREAM].title,
 		style: {
-			text: buttonList[buttonPressControlType.BUTTON_STREAM].title,
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_STREAM].state0_image),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -496,7 +529,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_StreamReady,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_STREAM].state0_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -506,7 +540,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_Streaming,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_STREAM].state1_image),
+					pngalignment: 'center:center',
 				},
 			},
 		],
@@ -517,10 +552,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: 'Controls',
 		name: buttonList[buttonPressControlType.BUTTON_FTB].title,
 		style: {
-			text: buttonList[buttonPressControlType.BUTTON_FTB].title,
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_FTB].state0_image),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -547,7 +584,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_PGM,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_FTB].state1_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -559,7 +597,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_PVW,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_FTB].state2_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -571,7 +610,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_Standby,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_FTB].state0_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -583,7 +623,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_Unavailable,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_FTB].state3_image),
+					pngalignment: 'center:center',
 				},
 			},
 		],
@@ -594,10 +635,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: 'Controls',
 		name: buttonList[buttonPressControlType.BUTTON_CUT].title,
 		style: {
-			text: buttonList[buttonPressControlType.BUTTON_CUT].title,
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_CUT].state0_image),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -622,10 +665,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: 'Controls',
 		name: buttonList[buttonPressControlType.BUTTON_AUTO].title,
 		style: {
-			text: buttonList[buttonPressControlType.BUTTON_AUTO].title,
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_AUTO].state0_image),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -652,7 +697,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_PGM,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_AUTO].state1_image),
+					pngalignment: 'center:center',
 				},
 			},
 			{
@@ -662,7 +708,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_LightBlue,
+					png64: await svgPathToCachedPng64(instance, buttonList[buttonPressControlType.BUTTON_AUTO].state2_image),
+					pngalignment: 'center:center',
 				},
 			},
 		],
@@ -673,10 +720,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: 'Controls',
 		name: 'Auto Switching',
 		style: {
-			text: 'Auto Switching',
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, 'imgs/auto/autoswitch_off'),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -700,7 +749,8 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				},
 				style: {
 					color: Col_White,
-					bgcolor: Col_LightBlue,
+					png64: await svgPathToCachedPng64(instance, 'imgs/auto/autoswitch_on'),
+					pngalignment: 'center:center',
 				},
 			},
 		],
@@ -711,10 +761,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 		category: 'Controls',
 		name: 'Change Transition',
 		style: {
-			text: 'Change Transition',
+			text: '',
 			size: '14',
 			color: Col_White,
 			bgcolor: Col_Black,
+			png64: await svgPathToCachedPng64(instance, 'imgs/transitions/all_transitions/fade_dip/transition_fade'),
+			pngalignment: 'center:center',
 		},
 		steps: [
 			{
@@ -731,7 +783,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				up: [],
 			},
 		],
-		feedbacks: [],
+		feedbacks: [
+			{
+				feedbackId: FeedbackId.transitions,
+				options: {},
+			},
+		],
 	};
 
 	//Audio Source
@@ -746,10 +803,12 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 				name: channelEntry.title,
 				style: {
 					text: channelEntry.title,
-					size: '14',
-					alignment: 'left:top',
+					size: 11,
+					alignment: 'center:bottom',
 					color: Col_White,
 					bgcolor: Col_Black,
+					png64: await svgPathToCachedPng64(instance, channelEntry.icon),
+					pngalignment: 'center:center',
 				},
 				steps: [
 					{
@@ -802,8 +861,30 @@ export async function SetPresets(instance: RCVInstance): Promise<void> {
 							scmuted_value: false,
 						},
 						style: {
-							bgcolor: Col_Red,
 							color: Col_Black,
+							png64: await svgPathToCachedPng64(instance, channelEntry.mute_icon),
+							pngalignment: 'center:center',
+						},
+					},
+					{
+						feedbackId: FeedbackId.audio_sources,
+						options: {
+							channel: channel as audioChannels,
+							submix: SubmixChannels.LIVE,
+							action: 'scmute',
+							muted_value: true,
+							variable: false,
+							comparison: 'equal',
+							volume_value: 0,
+							gain_value: 0,
+							volume_value_var: '0',
+							gain_value_var: '0',
+							scmuted_value: true,
+						},
+						style: {
+							color: Col_Black,
+							png64: await svgPathToCachedPng64(instance, channelEntry.scmute_icon),
+							pngalignment: 'center:center',
 						},
 					},
 				],

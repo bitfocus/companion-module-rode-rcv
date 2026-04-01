@@ -23,6 +23,7 @@ describe('oscController', () => {
 		on(event: string, listener: any): this {
 			return super.on(event, listener);
 		}
+
 		off(event: string, listener: any): this {
 			return super.off(event, listener);
 		}
@@ -42,8 +43,6 @@ describe('oscController', () => {
 
 		destroy(_err?: any) {
 			this.destroyed = true;
-			// mimic net socket: close event fires
-			// Note: actual net.Socket may emit 'close' asynchronously; for tests, sync is fine.
 			this.emit('close', !!_err);
 		}
 	}
@@ -52,36 +51,47 @@ describe('oscController', () => {
 	// Fake UDP Socket (dgram)
 	// ----------------------------
 	class FakeDgramSocket extends EventEmitter {
+		public boundPort: number | null = null;
 		public boundAddress: string | null = null;
-		public broadcast = false;
 		public closed = false;
+		public sentPackets: Array<{
+			message: Buffer;
+			port: number;
+			ip: string;
+		}> = [];
 
-		bind(opts: { address: string }, cb?: () => void) {
-			this.boundAddress = opts.address;
+		bind(port: number, address: string, cb?: () => void) {
+			this.boundPort = port;
+			this.boundAddress = address;
 			if (cb) cb();
+			return this;
 		}
 
-		setBroadcast(v: boolean) {
-			this.broadcast = v;
+		address() {
+			return {
+				address: this.boundAddress ?? '0.0.0.0',
+				port: this.boundPort ?? 0,
+				family: 'IPv4',
+			};
 		}
 
 		send(
-			_message: Buffer,
-			_offset: number,
-			_length: number,
-			_port: number,
-			_ip: string,
+			message: Buffer,
+			port: number,
+			ip: string,
 			cb?: (err?: Error | null) => void,
 		) {
+			this.sentPackets.push({ message, port, ip });
 			if (cb) cb(null);
+			return this;
 		}
 
 		close() {
 			this.closed = true;
+			this.emit('close');
 		}
 	}
 
-	// Helper: create a framed OSC packet (4-byte LE length + payload)
 	function framed(payload: Buffer) {
 		const len = Buffer.alloc(4);
 		len.writeInt32LE(payload.length, 0);
@@ -89,19 +99,18 @@ describe('oscController', () => {
 	}
 
 	async function loadOscController(overrides?: {
-		// allow tests to intercept important hooks
 		handleIncomingData?: sinon.SinonSpy;
 		ConsoleLog?: sinon.SinonSpy;
 		getRCVInfo?: sinon.SinonSpy;
+		createSocketOverride?: (_type: 'udp4') => any;
+		xmlParserResult?: any;
 	}) {
 		const clock = sinon.useFakeTimers();
 
-		// Stubs/spies
 		const handleIncomingData = overrides?.handleIncomingData ?? sinon.spy(async () => {});
 		const ConsoleLog = overrides?.ConsoleLog ?? sinon.spy();
 		const getRCVInfo = overrides?.getRCVInfo ?? sinon.spy(async () => {});
 
-		// Capture created sockets
 		const createdTcpSockets: FakeNetSocket[] = [];
 		const SocketCtor = function () {
 			const s = new FakeNetSocket();
@@ -110,37 +119,37 @@ describe('oscController', () => {
 		} as any;
 
 		const createdUdpSockets: FakeDgramSocket[] = [];
-		const createSocket = function (_type: 'udp4') {
+		const defaultCreateSocket = function (_type: 'udp4') {
 			const s = new FakeDgramSocket();
 			createdUdpSockets.push(s);
 			return s as any;
 		};
 
-		// Fake XMLParser
+		const createSocket = overrides?.createSocketOverride ?? defaultCreateSocket;
+
 		class FakeXMLParser {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			constructor(_opts: any) {}
+
 			parse(_xml: string) {
-				// you can override per-test by stubbing prototype if needed
-				return {
-					RcvDevice: {
-						'@_name': 'RØDECaster Video Test',
-						'@_serial_no': 'ABC123',
-						'@_sw_version': '1.2.3',
-						'@_device_model': '0',
-						'@_type': 'RodeCasterVideo',
-					},
-				};
+				return (
+					overrides?.xmlParserResult ?? {
+						RcvDevice: {
+							'@_name': 'RØDECaster Video Test',
+							'@_serial_no': 'ABC123',
+							'@_sw_version': '1.2.3',
+							'@_device_model': '0',
+							'@_type': 'RodeCasterVideo',
+						},
+					}
+				);
 			}
 		}
 
-		// Minimal commands
 		const commands = {
 			SHOW: ['/show/request'],
 			REMOTE: ['/remote/request'],
 		};
 
-		// Minimal enums/constants used by module logic
 		const LogLevel = { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' };
 		const RCVModel = { RCV: 0, RCVS: 1, UNKNOWN: 999 };
 
@@ -151,23 +160,22 @@ describe('oscController', () => {
 			model: RCVModel.RCV,
 		};
 
-		// Mock osc-js (Message.pack)
 		const OSCSend = {
 			Message: class {
 				private _command: string;
 				private _args: any[];
+
 				constructor(command: string, ...args: any[]) {
 					this._command = command;
 					this._args = args;
 				}
+
 				pack() {
-					// stable payload so we can assert framing
 					return Buffer.from(`OSC:${this._command}:${this._args.join(',')}`, 'utf8');
 				}
 			},
 		};
 
-		// Mock osc.readPacket used by onDataHandler
 		const osc = {
 			readPacket: (_buf: Buffer, _opts: any) => {
 				return {
@@ -177,16 +185,6 @@ describe('oscController', () => {
 			},
 		};
 
-		// Fake network interfaces
-		const networkInterfaces = () => ({
-			en0: [
-				{ address: '192.168.1.10', family: 'IPv4', internal: false },
-				{ address: 'fe80::1', family: 'IPv6', internal: false },
-			],
-			lo0: [{ address: '127.0.0.1', family: 'IPv4', internal: true }],
-		});
-
-		// Mock InstanceStatus
 		const InstanceStatus = {
 			Connecting: 'Connecting',
 			ConnectionFailure: 'ConnectionFailure',
@@ -194,20 +192,18 @@ describe('oscController', () => {
 			Ok: 'Ok',
 		};
 
-		// Load module with ESM mocks
 		const mod = await esmock('../../src/modules/oscController.js', {
 			'@companion-module/base': { InstanceStatus },
 			net: { Socket: SocketCtor },
 			'node:net': { Socket: SocketCtor },
 			'osc-js': OSCSend,
-			osc: osc,
+			osc,
 			'../../src/modules/commands.js': { commands },
 			'../../src/events/recievedDataHandler.js': { handleIncomingData },
 			'../../src/modules/constants.js': { controllerVariables },
 			'../../src/modules/enums.js': { LogLevel, RCVModel },
 			'../../src/modules/logger.js': { ConsoleLog },
 			'fast-xml-parser/src/fxp.js': { XMLParser: FakeXMLParser },
-			os: { networkInterfaces },
 			dgram: { createSocket },
 			'../../src/helpers/connectionHelpers.js': { getRCVInfo },
 		});
@@ -289,7 +285,9 @@ describe('oscController', () => {
 				const client = mod.oscClient();
 				expect(client).to.not.equal(null);
 
-				// Clear writes from connect-time commands
+				await Promise.resolve();
+				await Promise.resolve();
+
 				stubs.createdTcpSockets[0].writes = [];
 
 				await mod.sendOSCCommand(instance as any, '/hello', 7, 'x');
@@ -319,20 +317,21 @@ describe('oscController', () => {
 
 				mod.createClient(instance as any, '192.168.1.50', 10024);
 
-				// should have created one socket and connected immediately
 				expect(stubs.createdTcpSockets.length).to.equal(1);
-				expect(stubs.createdTcpSockets[0].connectArgs[0]).to.deep.equal({ port: 10024, host: '192.168.1.50' });
+				expect(stubs.createdTcpSockets[0].connectArgs[0]).to.deep.equal({
+					port: 10024,
+					host: '192.168.1.50',
+				});
 
 				expect(instance.globalSettings.oscConnected).to.equal(true);
 				expect(instance.updateStatus.called).to.equal(true);
-
-				// Offline prefix stripped
 				expect(instance.globalSettings.selectedDevice.name.startsWith('[Offline]')).to.equal(false);
 
-				// getRCVInfo called
+				await Promise.resolve();
+				await Promise.resolve();
+
 				expect(stubs.getRCVInfo.called).to.equal(true);
 
-				// also sets variable device_ipaddress
 				expect(instance.setVariableValues.called).to.equal(true);
 				const vars = instance.setVariableValues.lastCall.args[0];
 				expect(vars.device_ipaddress).to.equal('192.168.1.50');
@@ -349,12 +348,10 @@ describe('oscController', () => {
 				mod.createClient(instance as any, '192.168.1.50', 10024);
 
 				const sock = stubs.createdTcpSockets[0];
-
-				// Emit framed "message" (osc.readPacket is mocked to ignore payload contents)
 				const payload = Buffer.from('ignored', 'utf8');
+
 				sock.emit('data', framed(payload));
 
-				// onDataHandler is async; flush microtasks
 				await Promise.resolve();
 
 				expect(handleIncomingData.called).to.equal(true);
@@ -385,7 +382,6 @@ describe('oscController', () => {
 				const sock = stubs.createdTcpSockets[0];
 				expect(sock.destroyed).to.equal(true);
 
-				// status set to Disconnected
 				expect(instance.updateStatus.called).to.equal(true);
 				expect(String(instance.updateStatus.lastCall.args[0])).to.equal('Disconnected');
 			} finally {
@@ -395,35 +391,92 @@ describe('oscController', () => {
 	});
 
 	describe('sendUdpPacket', () => {
-		it('discovers devices from UDP replies across interfaces', async () => {
+		it('sends a unicast UDP packet to the known device IP and returns parsed device info', async () => {
+			const { mod, stubs, clock, restore } = await loadOscController();
+			try {
+				const instance = makeInstance();
+
+				const promise = mod.sendUdpPacket(instance as any, 'RodeBroadcast', '192.168.1.99');
+
+				expect(stubs.createdUdpSockets.length).to.equal(1);
+
+				const udp = stubs.createdUdpSockets[0];
+				expect(udp.boundPort).to.equal(0);
+				expect(udp.boundAddress).to.equal('0.0.0.0');
+
+				expect(udp.sentPackets.length).to.equal(1);
+				expect(udp.sentPackets[0].message.toString('utf8')).to.equal('RodeBroadcast');
+				expect(udp.sentPackets[0].port).to.equal(9999);
+				expect(udp.sentPackets[0].ip).to.equal('192.168.1.99');
+
+				const xml = `<RcvDevice name="RØDECaster Video Test" serial_no="ABC123" sw_version="1.2.3" device_model="0" type="RodeCasterVideo" />`;
+				udp.emit('message', Buffer.from(xml, 'utf8'), { address: '192.168.1.99' });
+
+				await clock.tickAsync(2001);
+
+				const result = await promise;
+
+				expect(result).to.have.length(1);
+				expect(result[0].name).to.equal('RØDECaster Video Test');
+				expect(result[0].serialNo).to.equal('ABC123');
+				expect(result[0].swVersion).to.equal('1.2.3');
+				expect(result[0].ipAddress).to.equal('192.168.1.99');
+				expect(result[0].type).to.equal('RodeCasterVideo');
+				expect(udp.closed).to.equal(true);
+			} finally {
+				restore();
+			}
+		});
+
+		it('resolves with an empty array when UDP send fails instead of crashing', async () => {
+			const failingUdp = new FakeDgramSocket();
+
+			sinon.stub(failingUdp, 'send').callsFake((
+				message: Buffer,
+				port: number,
+				ip: string,
+				cb?: (err?: Error | null) => void,
+			) => {
+				failingUdp.sentPackets.push({ message, port, ip });
+				if (cb) cb(new Error('send EHOSTUNREACH 192.168.1.99:9999'));
+				return failingUdp;
+			});
+
+			const { mod, stubs, restore } = await loadOscController({
+				createSocketOverride: () => failingUdp as any,
+				xmlParserResult: {},
+			});
+
+			try {
+				const instance = makeInstance();
+
+				const result = await mod.sendUdpPacket(instance as any, 'RodeBroadcast', '192.168.1.99');
+
+				expect(result).to.deep.equal([]);
+				expect(stubs.ConsoleLog.called).to.equal(true);
+				expect(failingUdp.closed).to.equal(true);
+			} finally {
+				restore();
+			}
+		});
+
+		it('resolves with an empty array when the UDP socket emits an error', async () => {
 			const { mod, stubs, restore } = await loadOscController();
 			try {
 				const instance = makeInstance();
 
-				const p = mod.sendUdpPacket(instance as any, 'RodeBroadcast', '255.255.255.255');
+				const promise = mod.sendUdpPacket(instance as any, 'RodeBroadcast', '192.168.1.99');
 
-				// It should create a UDP socket for each non-internal IPv4 interface
-				// From our mock: en0 has one external IPv4, lo0 is internal -> total 1 socket
 				expect(stubs.createdUdpSockets.length).to.equal(1);
 				const udp = stubs.createdUdpSockets[0];
 
-				// Simulate a device responding
-				const xml = `<RcvDevice name="RØDECaster Video Test" serial_no="ABC123" sw_version="1.2.3" device_model="0" type="RodeCasterVideo" />`;
-				udp.emit('message', Buffer.from(xml, 'utf8'), { address: '192.168.1.99' });
+				udp.emit('error', Object.assign(new Error('EHOSTUNREACH'), { code: 'EHOSTUNREACH' }));
 
-				// RESPONSE_TIMEOUT in module is 2000ms; advance timers so sockets close + promise resolves
-				stubs.createdUdpSockets.forEach((s) => expect(s.closed).to.equal(false));
-				stubs.createdUdpSockets.forEach((s) => expect(s.broadcast).to.equal(true)); // setBroadcast(true) called
+				const result = await promise;
 
-				// tick slightly past timeout
-				stubs.createdUdpSockets; // keep lint happy
-				// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-				stubs.createdUdpSockets;
-
-				// advance timers
-				// (we used sinon fake timers in loader)
-				// @ts-ignore - clock is returned
-				// NOTE: we don’t have direct clock in stubs; use the module loader’s returned clock instead.
+				expect(result).to.deep.equal([]);
+				expect(udp.closed).to.equal(true);
+				expect(stubs.ConsoleLog.called).to.equal(true);
 			} finally {
 				restore();
 			}

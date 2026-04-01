@@ -161,8 +161,8 @@ describe('connectionHelpers.getRCVInfo', () => {
 
 		await getRCVInfo(instance as any, ip);
 
-		// Should have marked it non-manual
-		expect(discovered.manual).to.equal(false);
+		// Original discovered object should not be mutated
+		expect(discovered.manual).to.equal(true);
 
 		// Model propagated to controller variables
 		expect(controllerVariables.model).to.equal('RCVS');
@@ -181,7 +181,7 @@ describe('connectionHelpers.getRCVInfo', () => {
 		expect(stubs.ConsoleLog.calledOnce).to.equal(true);
 		const logArgs = stubs.ConsoleLog.firstCall.args;
 		expect(logArgs[0]).to.equal(instance);
-		expect(logArgs[1]).to.include('[Discovery] Found new device');
+		expect(logArgs[1]).to.include('[Discovery] Found device');
 		expect(logArgs[2]).to.equal('info');
 		expect(logArgs[3]).to.equal(true);
 

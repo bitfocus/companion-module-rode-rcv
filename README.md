@@ -107,7 +107,8 @@ All feedbacks are booleans, which allows them to be used in triggers.
 	- Provides feedback based on Switching Mode.
 - **Visual Switcher**
 	- Show a visual representative of the main RCV buttons.
-
+- **Current Transition**
+	- Set the icon to the currently seleected transition.
 
 ### Variables
 

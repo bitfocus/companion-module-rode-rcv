@@ -163,6 +163,8 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 					controllerVariables.transitionInvert = _transitionWipe;
 				}
 
+				instance.checkFeedbacks(FeedbackId.transitions);
+
 				instance.setVariableValues({
 					transition_time: controllerVariables.currentTransTime.toString(),
 				});
@@ -1350,6 +1352,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			}
 		}
 
+		instance.checkFeedbacks(FeedbackId.transitions);
 		return;
 	}
 
@@ -1366,6 +1369,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			}
 		}
 
+		instance.checkFeedbacks(FeedbackId.transitions);
 		return;
 	}
 
@@ -1409,6 +1413,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			controllerVariables.transitionInvert = false;
 		}
 
+		instance.checkFeedbacks(FeedbackId.transitions);
 		return;
 	}
 
@@ -1743,12 +1748,6 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		instance.checkFeedbacks(FeedbackId.keying);
-
-		/*
-		instance.setVariableValues({
-			transition_time: _time.toString(),
-		});
-		*/
 
 		return;
 	}

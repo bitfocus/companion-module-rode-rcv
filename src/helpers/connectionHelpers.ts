@@ -16,28 +16,50 @@ export async function getRCVInfo(instance: RCVInstance, ipAddress: string): Prom
 		name: `RØDECaster Video (${ipAddress})`,
 		serialNo: 'manual',
 		swVersion: 'Unknown',
-		ipAddress: ipAddress,
+		ipAddress,
 		manual: true,
 		model: RCVModel.RCV,
 		type: 'RodeCasterVideo',
 	};
 
-	// Locate the device with the specified IP address and pull info about it
-	let rxDevice = await sendUdpPacket(instance, 'RodeBroadcast', ipAddress);
+	try {
+		const rxDevices = await sendUdpPacket(instance, 'RodeBroadcast', ipAddress);
 
-	if (rxDevice.length > 0) {
-		rxDevice.forEach((newDevice) => {
-			if (newDevice.ipAddress === ipAddress) {
-				ConsoleLog(
-					instance,
-					`[Discovery] Found new device ${newDevice.name} (${newDevice.serialNo}) at IP ${newDevice.ipAddress}. Model: ${newDevice.model}`,
-					LogLevel.INFO,
-					true,
-				);
-				newDevice.manual = false;
-				manualDevice = newDevice;
-			}
-		});
+		// Connection may have dropped while waiting for UDP response
+		if (!instance.globalSettings.oscConnected) {
+			ConsoleLog(instance, `Skipping RCV info update because OSC is no longer connected`, LogLevel.WARN, false);
+			return;
+		}
+
+		const matchedDevice = rxDevices.find((device) => device.ipAddress === ipAddress);
+
+		if (matchedDevice) {
+			ConsoleLog(
+				instance,
+				`[Discovery] Found device ${matchedDevice.name} (${matchedDevice.serialNo}) at IP ${matchedDevice.ipAddress}. Model: ${matchedDevice.model}`,
+				LogLevel.INFO,
+				true,
+			);
+
+			manualDevice = {
+				...matchedDevice,
+				manual: false,
+			};
+		} else {
+			ConsoleLog(
+				instance,
+				`No UDP discovery response received from ${ipAddress}. Using fallback manual device info.`,
+				LogLevel.WARN,
+				false,
+			);
+		}
+	} catch (err: any) {
+		ConsoleLog(
+			instance,
+			`Failed to retrieve device info from ${ipAddress} via UDP: ${err?.message ?? String(err)}`,
+			LogLevel.ERROR,
+			false,
+		);
 	}
 
 	controllerVariables.model = manualDevice.model;
@@ -50,7 +72,7 @@ export async function getRCVInfo(instance: RCVInstance, ipAddress: string): Prom
 		device_ipaddress: manualDevice.ipAddress || '',
 	});
 
-	//Refresh UI elements
+	// Refresh UI elements
 	UpdateActions(instance);
 	UpdateFeedbacks(instance);
 	SetPresets(instance);
@@ -82,22 +104,20 @@ export function setSyncDevice(pid: RCVSyncDevice) {
 		case RCVSyncDevice.RCPII:
 			syncDeviceName = 'RodeCaster Pro II';
 			channelList[audioChannels.RCSyncCombo3]!.title = 'SYNC Combo 3';
-			channelList[audioChannels.RCSyncCombo3]!.icon = 'imgs/new/key_images/audio_sources/combo3';
-			channelList[audioChannels.RCSyncCombo3]!.mute_icon = 'imgs/new/key_images/audio_sources/combo3_mute';
-			channelList[audioChannels.RCSyncCombo3]!.scmute_icon = 'imgs/new/key_images/audio_sources/combo3_scmute';
-			channelList[audioChannels.RCSyncCombo3]!.layout_icon = 'imgs/new/key_images/audio_sources/combo3_layout';
-			channelList[audioChannels.RCSyncCombo3]!.layout_mute_icon =
-				'imgs/new/key_images/audio_sources/combo3_layout_mute';
+			channelList[audioChannels.RCSyncCombo3]!.icon = 'imgs/audio_sources/combo3';
+			channelList[audioChannels.RCSyncCombo3]!.mute_icon = 'imgs/audio_sources/combo3_mute';
+			channelList[audioChannels.RCSyncCombo3]!.scmute_icon = 'imgs/audio_sources/combo3_scmute';
+			channelList[audioChannels.RCSyncCombo3]!.layout_icon = 'imgs/audio_sources/combo3_layout';
+			channelList[audioChannels.RCSyncCombo3]!.layout_mute_icon = 'imgs/audio_sources/combo3_layout_mute';
 			break;
 		case RCVSyncDevice.RCPIIDuo:
 			syncDeviceName = 'RodeCaster Pro II Duo';
 			channelList[audioChannels.RCSyncCombo3]!.title = 'SYNC Headset';
-			channelList[audioChannels.RCSyncCombo3]!.icon = 'imgs/new/key_images/audio_sources/headset';
-			channelList[audioChannels.RCSyncCombo3]!.mute_icon = 'imgs/new/key_images/audio_sources/headset_mute';
-			channelList[audioChannels.RCSyncCombo3]!.scmute_icon = 'imgs/new/key_images/audio_sources/headset_scmute';
-			channelList[audioChannels.RCSyncCombo3]!.layout_icon = 'imgs/new/key_images/audio_sources/headset_layout';
-			channelList[audioChannels.RCSyncCombo3]!.layout_mute_icon =
-				'imgs/new/key_images/audio_sources/headset_layout_mute';
+			channelList[audioChannels.RCSyncCombo3]!.icon = 'imgs/audio_sources/headset';
+			channelList[audioChannels.RCSyncCombo3]!.mute_icon = 'imgs/audio_sources/headset_mute';
+			channelList[audioChannels.RCSyncCombo3]!.scmute_icon = 'imgs/audio_sources/headset_scmute';
+			channelList[audioChannels.RCSyncCombo3]!.layout_icon = 'imgs/audio_sources/headset_layout';
+			channelList[audioChannels.RCSyncCombo3]!.layout_mute_icon = 'imgs/audio_sources/headset_layout_mute';
 			break;
 		default:
 			syncDeviceName = 'Unknown Device';
