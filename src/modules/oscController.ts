@@ -11,7 +11,7 @@ import { ConsoleLog } from './logger.js';
 import type { RCVInstance } from '../index.js';
 import { XMLParser } from 'fast-xml-parser/src/fxp.js';
 import { networkInterfaces } from 'os';
-import { createSocket } from 'dgram';
+import { createSocket, Socket as DgramSocket } from 'dgram';
 import { getRCVInfo } from '../helpers/connectionHelpers.js';
 
 let _Client: ClientInfo | null = null;
@@ -244,14 +244,25 @@ export function createClient(instance: RCVInstance, ipAddress: string, port: num
 			);
 		}
 
-		getRCVInfo(instance, ipAddress);
+		void (async () => {
+			try {
+				await getRCVInfo(instance, ipAddress);
+			} catch (err: any) {
+				ConsoleLog(instance, `Failed to retrieve RCV info: ${err?.message ?? String(err)}`, LogLevel.ERROR, false);
+			}
 
-		//await saveGlobalSettings();
+			try {
+				await sendOSCCommand(instance, commands.SHOW[0]);
+			} catch (err: any) {
+				ConsoleLog(instance, `Failed to send /show: ${err?.message ?? String(err)}`, LogLevel.ERROR, false);
+			}
 
-		//updateConnectionState();
-
-		sendOSCCommand(instance, commands.SHOW[0]);
-		sendOSCCommand(instance, commands.REMOTE[0]);
+			try {
+				await sendOSCCommand(instance, commands.REMOTE[0]);
+			} catch (err: any) {
+				ConsoleLog(instance, `Failed to send /remote: ${err?.message ?? String(err)}`, LogLevel.ERROR, false);
+			}
+		})();
 
 		ConsoleLog(instance, `Connected to OSC server at ${ipAddress}:${port}`, LogLevel.INFO, false);
 		instance.updateStatus(InstanceStatus.Ok, `Connected to ${ipAddress}`);
@@ -361,16 +372,15 @@ function parseOSCBlob(instance, message): { blobSize: number; blobReturn: Uint8A
 }
 
 /**
- * Sends a UDP packet and waits for responses from multiple sources.
- * This function is used for device discovery using multicast.
- * @returns {Promise<RcvDeviceInfo[]>} - A promise that resolves to an array of RcvDeviceInfo objects.
+ * Sends a unicast UDP packet to a known device IP and waits briefly for XML responses.
+ * This is used for device-specific discovery-style queries where the destination IP is already known.
  */
 export async function sendUdpPacket(
 	instance: RCVInstance,
 	_message: string,
-	_ipAddress: string = '255.255.255.255',
+	_ipAddress: string,
 ): Promise<RcvDeviceInfo[]> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve) => {
 		const message = Buffer.from(_message);
 		const port = 9999;
 		const devices: RcvDeviceInfo[] = [];
@@ -378,73 +388,144 @@ export async function sendUdpPacket(
 			ignoreAttributes: false,
 		});
 
-		// Get all network interfaces
-		const interfaces = networkInterfaces();
+		let client: DgramSocket | null = null;
+		let settled = false;
+		let responseTimer: NodeJS.Timeout | null = null;
 
-		const interfacePromises = Object.values(interfaces).flatMap(
-			(networkInterface) =>
-				networkInterface
-					?.filter((details) => details.family === 'IPv4' && !details.internal)
-					.map((details) => {
-						return new Promise<void>((ifaceResolve, ifaceReject) => {
-							const client = createSocket('udp4'); // Create a socket per interface
+		const finish = (result: RcvDeviceInfo[] = devices) => {
+			if (settled) return;
+			settled = true;
 
-							client.on('message', (msg, rinfo) => {
-								try {
-									const parsed = parser.parse(msg.toString());
+			if (responseTimer) {
+				clearTimeout(responseTimer);
+				responseTimer = null;
+			}
 
-									if (parsed && parsed.RcvDevice && parsed.RcvDevice['@_name']) {
-										const deviceInfo: RcvDeviceInfo = {
-											name: parsed.RcvDevice['@_name'],
-											serialNo: parsed.RcvDevice['@_serial_no'],
-											swVersion: parsed.RcvDevice['@_sw_version'],
-											ipAddress: rinfo.address,
-											model: (Number(parsed.RcvDevice['@_device_model']) as RCVModel) ?? RCVModel.UNKNOWN,
-											type: parsed.RcvDevice['@_type'],
-										};
-										devices.push(deviceInfo);
-										ConsoleLog(
-											instance,
-											`Device found: ${deviceInfo.name} (${deviceInfo.ipAddress}). Serial: ${deviceInfo.serialNo}, SW: ${deviceInfo.swVersion}, Model: ${deviceInfo.model}, Type: ${deviceInfo.type}`,
-											LogLevel.DEBUG,
-											false,
-										);
-									} else {
-										ConsoleLog(instance, 'Parsed object does not contain RcvDevice.', LogLevel.ERROR, false);
-									}
-								} catch (err) {
-									ConsoleLog(instance, `Error parsing response: ${err.message}`, LogLevel.ERROR, false);
-								}
-							});
+			if (client) {
+				try {
+					client.removeAllListeners('message');
+					client.removeAllListeners('error');
+					client.removeAllListeners('close');
+					client.close();
+				} catch (err: any) {
+					ConsoleLog(instance, `UDP socket cleanup warning: ${err?.message ?? String(err)}`, LogLevel.WARN, false);
+				}
+				client = null;
+			}
 
-							client.on('error', (err) => {
-								client.close();
-								ifaceReject(err);
-							});
+			resolve(result);
+		};
 
-							// Bind to the specific network interface's address
-							client.bind({ address: details.address }, () => {
-								client.setBroadcast(true);
+		try {
+			client = createSocket('udp4');
 
-								// Send the message over this specific interface
-								client.send(message, 0, message.length, port, _ipAddress, (err) => {
-									if (err) {
-										client.close();
-										ifaceReject(err);
-									} else {
-										setTimeout(() => {
-											client.close();
-											ifaceResolve();
-										}, RESPONSE_TIMEOUT);
-									}
-								});
-							});
-						});
-					}) || [],
-		);
+			client.on('message', (msg, rinfo) => {
+				try {
+					const parsed = parser.parse(msg.toString());
 
-		Promise.all(interfacePromises)
-			.then(() => resolve(devices))
-			.catch(reject);
+					if (parsed?.RcvDevice?.['@_name']) {
+						const deviceInfo: RcvDeviceInfo = {
+							name: parsed.RcvDevice['@_name'],
+							serialNo: parsed.RcvDevice['@_serial_no'],
+							swVersion: parsed.RcvDevice['@_sw_version'],
+							ipAddress: rinfo.address,
+							model: (Number(parsed.RcvDevice['@_device_model']) as RCVModel) ?? RCVModel.UNKNOWN,
+							type: parsed.RcvDevice['@_type'],
+						};
+
+						// Avoid duplicates in case the device responds more than once
+						const exists = devices.some(
+							(d) =>
+								d.ipAddress === deviceInfo.ipAddress &&
+								d.serialNo === deviceInfo.serialNo &&
+								d.name === deviceInfo.name,
+						);
+
+						if (!exists) {
+							devices.push(deviceInfo);
+							ConsoleLog(
+								instance,
+								`Device response: ${deviceInfo.name} (${deviceInfo.ipAddress}). Serial: ${deviceInfo.serialNo}, SW: ${deviceInfo.swVersion}, Model: ${deviceInfo.model}, Type: ${deviceInfo.type}`,
+								LogLevel.DEBUG,
+								false,
+							);
+						}
+					} else {
+						ConsoleLog(
+							instance,
+							`UDP response from ${rinfo.address} did not contain RcvDevice XML.`,
+							LogLevel.WARN,
+							false,
+						);
+					}
+				} catch (err: any) {
+					ConsoleLog(
+						instance,
+						`Error parsing UDP response from ${rinfo.address}: ${err?.message ?? String(err)}`,
+						LogLevel.ERROR,
+						false,
+					);
+				}
+			});
+
+			client.on('error', (err: NodeJS.ErrnoException) => {
+				ConsoleLog(
+					instance,
+					`UDP socket error to ${_ipAddress}:${port}: ${err.message}${err.code ? ` (${err.code})` : ''}`,
+					LogLevel.ERROR,
+					false,
+				);
+
+				// Resolve with whatever we have so far rather than crashing or rejecting
+				finish(devices);
+			});
+
+			client.on('close', () => {
+				ConsoleLog(instance, `UDP socket closed`, LogLevel.DEBUG, false);
+			});
+
+			// Bind to an ephemeral local port on all interfaces and let the OS choose the route
+			client.bind(0, '0.0.0.0', () => {
+				try {
+					const local = client!.address();
+					ConsoleLog(
+						instance,
+						`UDP socket bound to ${typeof local === 'string' ? local : `${local.address}:${local.port}`}`,
+						LogLevel.DEBUG,
+						false,
+					);
+
+					client!.send(message, port, _ipAddress, (err) => {
+						if (err) {
+							ConsoleLog(
+								instance,
+								`Error sending UDP packet to ${_ipAddress}:${port}: ${err.message}`,
+								LogLevel.ERROR,
+								false,
+							);
+							finish([]);
+							return;
+						}
+
+						ConsoleLog(instance, `Sent UDP packet to ${_ipAddress}:${port}`, LogLevel.DEBUG, false);
+
+						responseTimer = setTimeout(() => {
+							finish(devices);
+						}, RESPONSE_TIMEOUT);
+					});
+				} catch (err: any) {
+					ConsoleLog(
+						instance,
+						`Unexpected UDP send setup error: ${err?.message ?? String(err)}`,
+						LogLevel.ERROR,
+						false,
+					);
+					finish([]);
+				}
+			});
+		} catch (err: any) {
+			ConsoleLog(instance, `Failed to create UDP socket: ${err?.message ?? String(err)}`, LogLevel.ERROR, false);
+			finish([]);
+		}
 	});
 }

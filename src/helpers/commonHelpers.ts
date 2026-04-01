@@ -1,4 +1,3 @@
-import fs from 'fs';
 import path from 'path';
 import { AudioAudioSourceCh } from '../modules/interfaces.js';
 import {
@@ -304,15 +303,13 @@ export function getaudioMixesChoices() {
 
 export function getaudioChannels() {
 	const modelBlacklist = channelList_Models[controllerVariables.model] ?? [];
-	const syncBlacklist = channelList_Sync[controllerVariables.sync_device];
+	const syncBlacklist = channelList_Sync[controllerVariables.sync_device] ?? [];
 
 	const blacklist = new Set<audioChannels>([...modelBlacklist, ...syncBlacklist]);
 
-	const filteredChannelList: Partial<ButtonList> = Object.fromEntries(
-		Object.entries(channelList).filter(([key]) => !blacklist.has(key as audioChannels)),
-	);
+	const filteredChannelList = Object.entries(channelList).filter(([key]) => !blacklist.has(key as audioChannels));
 
-	return Object.entries(filteredChannelList);
+	return filteredChannelList as Array<[audioChannels, (typeof channelList)[audioChannels]]>;
 }
 
 export function getaudioChannelsChoices() {
