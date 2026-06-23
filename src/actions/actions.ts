@@ -76,6 +76,7 @@ export enum ActionId {
 	setInput = 'setInput',
 	switching_mode = 'switching_mode',
 	system = 'system',
+	stream_profile = 'stream_profile',
 }
 
 export function UpdateActions(instance: RCVInstance): void {
@@ -2720,6 +2721,46 @@ export function UpdateActions(instance: RCVInstance): void {
 					const type = 'shutdown';
 					delete instance.actions[feedback.id];
 					ConsoleLog(instance, `Removing button id ${feedback.id} of type ${type}`, LogLevel.DEBUG, false);
+				}
+			},
+		},
+		[ActionId.stream_profile]: {
+			name: 'Set Stream Profile',
+			description: 'Select which stream profile is active on the RCV',
+			options: [
+				{
+					id: 'profile',
+					type: 'number',
+					label: 'Profile Number',
+					min: 1,
+					max: 10,
+					default: 1,
+					step: 1,
+					range: false,
+					required: true,
+				},
+				{
+					id: 'total',
+					type: 'number',
+					label: 'Total Number of Profiles',
+					min: 1,
+					max: 10,
+					default: 2,
+					step: 1,
+					range: false,
+					required: true,
+				},
+			],
+			callback: async (ev) => {
+				const selected = ev.options.profile as number;
+				const total = ev.options.total as number;
+
+				for (let i = 1; i <= total; i++) {
+					await sendOSCCommand(
+						instance,
+						`/show/stream/${i}/enabled`,
+						i === selected ? 'true' : 'false'
+					);
 				}
 			},
 		},
