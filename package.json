@@ -11,7 +11,7 @@
     "test": "TS_NODE_PROJECT=tsconfig.test.json node --loader ts-node/esm ./node_modules/mocha/bin/mocha.js --timeout 5000 --extension ts \"tests/**/*.test.ts\"",
     "format": "prettier --write --log-level warn \"src/**/*.ts\" \"companion/**/*.json\" \"*.json\"",
     "check-format": "prettier --check --log-level warn \"src/**/*.ts\" \"companion/**/*.json\" \"*.json\"",
-	  "generate:images": "node tools/generate-image-map.mjs"
+    "generate:images": "node tools/generate-image-map.mjs"
   },
   "engines": {
     "node": ">=22.18.0"
@@ -37,7 +37,7 @@
     "typescript": "^5.6.2"
   },
   "devDependencies": {
-    "@companion-module/tools": "^2.5.0",
+    "@companion-module/tools": "^2.8.0",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/sinon": "^21.0.0",
