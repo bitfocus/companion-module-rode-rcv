@@ -19,7 +19,7 @@
   "types": "typings/index.d.ts",
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "",
   "dependencies": {
     "@companion-module/base": "1.13.6",
