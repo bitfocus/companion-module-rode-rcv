@@ -73,6 +73,8 @@ For more information, please refer to the [Companion documentation](https://gith
 	- Control switching mode.
 - **System Commands**
 	- Perform system actions, including shutdown and reboot
+- **Set Stream Profile**
+	- Select which stream profile is active on the device.
 
 ### Feedbacks
 All feedbacks are booleans, which allows them to be used in triggers.
