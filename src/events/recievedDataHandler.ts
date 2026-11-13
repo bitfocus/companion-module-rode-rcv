@@ -42,6 +42,7 @@ import { FeedbackId, UpdateFeedbacks } from '../feedbacks/feedbacks.js';
 import { setSyncDevice } from '../helpers/connectionHelpers.js';
 import { UpdateActions } from '../actions/actions.js';
 import { SetPresets } from '../presets/presets.js';
+import { sourceIndexToVariable, UpdatePgmPvwVariables } from '../variables/variables.js';
 
 const parserOptions = {
 	ignoreAttributes: false,
@@ -81,6 +82,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 
 				instance.setVariableValues({
 					switching_mode: controllerVariables.studioMode ? 'studio' : 'instant',
+					studio_mode: controllerVariables.studioMode.toString(),
 				});
 			}
 
@@ -104,6 +106,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				}
 
 				instance.checkFeedbacks(FeedbackId.logo);
+
+				instance.setVariableValues({
+					logo_enabled: controllerVariables.logoEnabled.toString(),
+				});
 			}
 
 			//Handle HDMI Outputs
@@ -126,6 +132,13 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				controllerVariables.ndi_1_output = parsed.RcvShow.NDISender.outputType;
 				ConsoleLog(instance, `NDI Output 1 set to ${controllerVariables.ndi_1_output}`, LogLevel.DEBUG, true);
 			}
+
+			instance.setVariableValues({
+				hdmi_a_output: controllerVariables.hdmi_A_output,
+				hdmi_b_output: controllerVariables.hdmi_B_output,
+				uvc_output: controllerVariables.uvc_1_output,
+				ndi_output: controllerVariables.ndi_1_output,
+			});
 
 			//Hande Framerate
 			if (parsed.RcvShow && parsed.RcvShow['@_frameRate']) {
@@ -167,6 +180,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 
 				instance.setVariableValues({
 					transition_time: controllerVariables.currentTransTime.toString(),
+					current_transition: controllerVariables.currentTransition ?? 'none',
 				});
 			}
 
@@ -568,6 +582,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				}
 
 				instance.checkFeedbacks(FeedbackId.overlays_state);
+
+				instance.setVariableValues({
+					pgm_overlay: sourceIndexToVariable(controllerVariables.PgmOverlay),
+					pvw_overlay: sourceIndexToVariable(controllerVariables.PvwOverlay),
+				});
 			}
 
 			if (
@@ -606,6 +625,8 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				}
 
 				instance.checkFeedbacks(FeedbackId.scenes_state);
+
+				UpdatePgmPvwVariables(instance);
 			}
 
 			if (debug) {
@@ -657,6 +678,7 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 
 		instance.setVariableValues({
 			switching_mode: controllerVariables.studioMode ? 'studio' : 'instant',
+			studio_mode: controllerVariables.studioMode.toString(),
 		});
 
 		instance.checkFeedbacks(FeedbackId.switching_mode);
@@ -675,6 +697,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		instance.checkFeedbacks(FeedbackId.logo);
+
+		instance.setVariableValues({
+			logo_enabled: controllerVariables.logoEnabled.toString(),
+		});
 	}
 
 	//Handles sources updates
@@ -734,6 +760,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		instance.checkFeedbacks(FeedbackId.overlays_state);
+
+		instance.setVariableValues({
+			pgm_overlay: sourceIndexToVariable(controllerVariables.PgmOverlay),
+			pvw_overlay: sourceIndexToVariable(controllerVariables.PvwOverlay),
+		});
 		return;
 	}
 
@@ -763,6 +794,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		}
 
 		instance.checkFeedbacks(FeedbackId.overlays_state);
+
+		instance.setVariableValues({
+			pgm_overlay: sourceIndexToVariable(controllerVariables.PgmOverlay),
+			pvw_overlay: sourceIndexToVariable(controllerVariables.PvwOverlay),
+		});
 		return;
 	}
 
@@ -1054,6 +1090,8 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			await updateSourceStates(-1, sceneSources, null, 'scene', 0, controllerVariables.PvwScene);
 			await updateSourceStates(-1, mediaSources, null, 'media', 0, controllerVariables.PvwMedia);
 		}
+
+		UpdatePgmPvwVariables(instance);
 	}
 
 	if (command.includes('/show/pvwcurrent') && controllerVariables.studioMode) {
@@ -1085,6 +1123,8 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			await updateSourceStates(-1, sceneSources, null, 'scene', 0, controllerVariables.PgmScene);
 			await updateSourceStates(-1, mediaSources, null, 'media', 0, controllerVariables.PgmMedia);
 		}
+
+		UpdatePgmPvwVariables(instance);
 	}
 
 	//Control Busses
@@ -1174,6 +1214,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			controllerVariables.streaming = false;
 		}
 
+		instance.setVariableValues({
+			streaming: controllerVariables.streaming.toString(),
+		});
+
 		instance.checkFeedbacks(FeedbackId.is_streaming);
 
 		return;
@@ -1186,6 +1230,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		} else {
 			controllerVariables.streaming = false;
 		}
+
+		instance.setVariableValues({
+			streaming: controllerVariables.streaming.toString(),
+		});
 
 		instance.checkFeedbacks(FeedbackId.is_streaming);
 
@@ -1213,6 +1261,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			controllerVariables.recording = false;
 		}
 
+		instance.setVariableValues({
+			recording: controllerVariables.recording.toString(),
+		});
+
 		instance.checkFeedbacks(FeedbackId.is_recording);
 		return;
 	}
@@ -1225,6 +1277,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		} else {
 			controllerVariables.recording = false;
 		}
+
+		instance.setVariableValues({
+			recording: controllerVariables.recording.toString(),
+		});
 
 		instance.checkFeedbacks(FeedbackId.is_recording);
 		return;
@@ -1334,6 +1390,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				break;
 		}
 
+		instance.setVariableValues({
+			source_mode: controllerVariables.currentRCVSourceMode,
+		});
+
 		instance.checkFeedbacks(FeedbackId.control_state);
 		return;
 	}
@@ -1352,6 +1412,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			}
 		}
 
+		instance.setVariableValues({
+			current_transition: controllerVariables.currentTransition ?? 'none',
+		});
+
 		instance.checkFeedbacks(FeedbackId.transitions);
 		return;
 	}
@@ -1369,6 +1433,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			}
 		}
 
+		instance.setVariableValues({
+			current_transition: controllerVariables.currentTransition ?? 'none',
+		});
+
 		instance.checkFeedbacks(FeedbackId.transitions);
 		return;
 	}
@@ -1381,6 +1449,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		} else {
 			controllerVariables.autoswitchEnabled = false;
 		}
+
+		instance.setVariableValues({
+			autoswitch_enabled: controllerVariables.autoswitchEnabled.toString(),
+		});
 
 		instance.checkFeedbacks(FeedbackId.auto_switching);
 		return;
@@ -1432,6 +1504,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 				controllerVariables.selectedMonitor = MonitorChannels.MON_VOL;
 				break;
 		}
+
+		instance.setVariableValues({
+			selected_monitor: controllerVariables.selectedMonitor,
+		});
 
 		return;
 	}
@@ -1763,6 +1839,11 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			controllerVariables.hdmi_A_output = args[0];
 		}
 
+		instance.setVariableValues({
+			hdmi_a_output: controllerVariables.hdmi_A_output,
+			hdmi_b_output: controllerVariables.hdmi_B_output,
+		});
+
 		instance.checkFeedbacks(FeedbackId.routing);
 
 		ConsoleLog(instance, `HDMI Output ${output} set to ${args[0]}`, LogLevel.DEBUG, false);
@@ -1777,6 +1858,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 			controllerVariables.uvc_1_output = args[0];
 		}
 
+		instance.setVariableValues({
+			uvc_output: controllerVariables.uvc_1_output,
+		});
+
 		instance.checkFeedbacks(FeedbackId.routing);
 
 		ConsoleLog(instance, `UVC Output ${output} set to ${args[0]}`, LogLevel.DEBUG, true);
@@ -1790,6 +1875,10 @@ export async function handleIncomingData(instance: RCVInstance, command: string,
 		if (output === 'outputType') {
 			controllerVariables.ndi_1_output = args[0];
 		}
+
+		instance.setVariableValues({
+			ndi_output: controllerVariables.ndi_1_output,
+		});
 
 		instance.checkFeedbacks(FeedbackId.routing);
 
