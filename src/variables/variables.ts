@@ -1,5 +1,6 @@
 import { CompanionOptionValues, CompanionVariableDefinition } from '@companion-module/base';
 import type { RCVInstance } from '../index.js';
+import { controllerVariables } from '../modules/constants.js';
 
 export function UpdateVariableDefinitions(instance: RCVInstance): void {
 	instance.variables = [
@@ -65,6 +66,26 @@ export function UpdateVariableDefinitions(instance: RCVInstance): void {
 		{ variableId: 'active_menu', name: 'Active Menu' },
 		{ variableId: 'sync_active', name: 'SYNC Active' },
 		{ variableId: 'sync_device', name: 'SYNC Device' },
+		{ variableId: 'hdmi_a_output', name: 'HDMI Output A Source' },
+		{ variableId: 'hdmi_b_output', name: 'HDMI Output B Source' },
+		{ variableId: 'uvc_output', name: 'UVC Output Source' },
+		{ variableId: 'ndi_output', name: 'NDI Output Source' },
+		{ variableId: 'pgm_input', name: 'Program Input' },
+		{ variableId: 'pvw_input', name: 'Preview Input' },
+		{ variableId: 'pgm_scene', name: 'Program Scene' },
+		{ variableId: 'pvw_scene', name: 'Preview Scene' },
+		{ variableId: 'pgm_media', name: 'Program Media' },
+		{ variableId: 'pvw_media', name: 'Preview Media' },
+		{ variableId: 'pgm_overlay', name: 'Program Overlay' },
+		{ variableId: 'pvw_overlay', name: 'Preview Overlay' },
+		{ variableId: 'recording', name: 'Recording' },
+		{ variableId: 'streaming', name: 'Streaming' },
+		{ variableId: 'studio_mode', name: 'Studio Mode' },
+		{ variableId: 'logo_enabled', name: 'Logo Enabled' },
+		{ variableId: 'autoswitch_enabled', name: 'Auto Switching Enabled' },
+		{ variableId: 'current_transition', name: 'Current Transition' },
+		{ variableId: 'source_mode', name: 'Source Mode' },
+		{ variableId: 'selected_monitor', name: 'Selected Monitor' },
 	];
 
 	instance.setVariableDefinitions(instance.variables);
@@ -132,5 +153,47 @@ export function UpdateVariableDefinitions(instance: RCVInstance): void {
 		active_menu: 'menuHome',
 		sync_active: 'false',
 		sync_device: 'No Device',
+		hdmi_a_output: controllerVariables.hdmi_A_output,
+		hdmi_b_output: controllerVariables.hdmi_B_output,
+		uvc_output: controllerVariables.uvc_1_output,
+		ndi_output: controllerVariables.ndi_1_output,
+		pgm_input: 'none',
+		pvw_input: 'none',
+		pgm_scene: 'none',
+		pvw_scene: 'none',
+		pgm_media: 'none',
+		pvw_media: 'none',
+		pgm_overlay: 'none',
+		pvw_overlay: 'none',
+		recording: 'false',
+		streaming: 'false',
+		studio_mode: 'false',
+		logo_enabled: 'false',
+		autoswitch_enabled: 'false',
+		current_transition: 'none',
+		source_mode: controllerVariables.currentRCVSourceMode,
+		selected_monitor: controllerVariables.selectedMonitor,
+	});
+}
+
+/**
+ * Converts an internal zero-based source index (-1 = nothing selected) into the
+ * one-based value shown in variables, matching the numbering used on the device.
+ */
+export function sourceIndexToVariable(index: number): string {
+	return index >= 0 ? (index + 1).toString() : 'none';
+}
+
+/**
+ * Publishes the current program/preview source selection as variables.
+ */
+export function UpdatePgmPvwVariables(instance: RCVInstance): void {
+	instance.setVariableValues({
+		pgm_input: sourceIndexToVariable(controllerVariables.PgmInput),
+		pvw_input: sourceIndexToVariable(controllerVariables.PvwInput),
+		pgm_scene: sourceIndexToVariable(controllerVariables.PgmScene),
+		pvw_scene: sourceIndexToVariable(controllerVariables.PvwScene),
+		pgm_media: sourceIndexToVariable(controllerVariables.PgmMedia),
+		pvw_media: sourceIndexToVariable(controllerVariables.PvwMedia),
 	});
 }

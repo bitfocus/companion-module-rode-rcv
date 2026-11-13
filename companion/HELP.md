@@ -101,6 +101,30 @@ All feedbacks are booleans, which allows them to be used in triggers.
 - `$(RCV:sync_active)`
 - `$(RCV:sync_device)`
 
+##### Switcher State
+- `$(RCV:pgm_input)` (1-6, or `none`)
+- `$(RCV:pvw_input)` (1-6, or `none`)
+- `$(RCV:pgm_scene)` (1-7, or `none`)
+- `$(RCV:pvw_scene)` (1-7, or `none`)
+- `$(RCV:pgm_media)` (1-7, or `none`)
+- `$(RCV:pvw_media)` (1-7, or `none`)
+- `$(RCV:pgm_overlay)` (1-7, or `none`)
+- `$(RCV:pvw_overlay)` (1-7, or `none`)
+- `$(RCV:recording)` (`true`/`false`)
+- `$(RCV:streaming)` (`true`/`false`)
+- `$(RCV:studio_mode)` (`true`/`false`)
+- `$(RCV:logo_enabled)` (`true`/`false`)
+- `$(RCV:autoswitch_enabled)` (`true`/`false`)
+- `$(RCV:current_transition)`
+- `$(RCV:source_mode)`
+- `$(RCV:selected_monitor)`
+
+##### Video Outputs
+- `$(RCV:hdmi_a_output)` (`program`, `preview`, `multi`, `camera1`-`camera6`, `off`)
+- `$(RCV:hdmi_b_output)`
+- `$(RCV:uvc_output)`
+- `$(RCV:ndi_output)`
+
 ##### Input Sources
 - `$(RCV:input_1_name)`
 - `$(RCV:input_2_name)`

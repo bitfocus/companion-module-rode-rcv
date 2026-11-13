@@ -155,6 +155,10 @@ export function UpdateActions(instance: RCVInstance): void {
 									command = commands.START_STREAM;
 									controllerVariables.streaming = true;
 								}
+
+								instance.setVariableValues({
+									streaming: controllerVariables.streaming.toString(),
+								});
 							} else if (mechanism === 'start') {
 								if (controllerVariables.streaming) {
 									ConsoleLog(instance, `Streaming already active`, LogLevel.WARN, false);
@@ -1510,6 +1514,10 @@ export function UpdateActions(instance: RCVInstance): void {
 					}
 				}
 
+				instance.setVariableValues({
+					autoswitch_enabled: controllerVariables.autoswitchEnabled.toString(),
+				});
+
 				instance.checkFeedbacks('auto_switching');
 			},
 
@@ -1565,6 +1573,10 @@ export function UpdateActions(instance: RCVInstance): void {
 						controllerVariables.logoEnabled = true;
 					}
 				}
+
+				instance.setVariableValues({
+					logo_enabled: controllerVariables.logoEnabled.toString(),
+				});
 
 				instance.checkFeedbacks('logo');
 			},
